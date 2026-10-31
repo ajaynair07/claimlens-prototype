@@ -1,0 +1,1270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClaimLens prototype · claims-readiness companion for health policyholders</title>
+<meta name="description" content="ClaimLens prototype: know what your health policy will actually pay, what could be deducted or rejected, what to submit, and where your claim stands. Synthetic data.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230B6E8A'/%3E%3Ctext x='16' y='21' font-size='14' text-anchor='middle' fill='white' font-family='Arial' font-weight='700'%3ECL%3C/text%3E%3C/svg%3E">
+<style>
+/* ClaimLens prototype - styles. Prototype with synthetic data. */
+:root{
+  --brand:#0B6E8A; --brand-ink:#084B5E; --brand-soft:#E4F2F6;
+  --insurer:#1E2A52; --ink:#16202B; --muted:#5A6878; --line:#E1E7EE; --bg:#E9EEF3; --card:#fff; --soft:#F5F8FB;
+  --ok:#147A4B; --ok-soft:#E3F4EA; --warn:#9A5800; --warn-soft:#FFF2DB; --risk:#B42318; --risk-soft:#FDE9E7;
+  --info:#2457C5; --info-soft:#E8EEFC; --violet:#6B3FA0; --violet-soft:#F1EAF9; --np:#6F7B8B; --np-soft:#EEF1F4;
+  --amber:#C26A00; --radius:14px; --fs:15px;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{font-size:var(--fs)}
+html.large{--fs:18.5px}
+body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,Roboto,"Noto Sans","Nirmala UI","Noto Sans Devanagari",sans-serif;color:var(--ink);background:var(--bg);line-height:1.45}
+button{font:inherit;cursor:pointer}
+.sr{position:absolute;left:-9999px}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:10px 18px;background:#0F1B2A;color:#fff}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:1.05rem;letter-spacing:.2px}
+.logo .mark{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#19A3C4,#0B6E8A);display:grid;place-items:center;font-size:.8rem}
+.logo small{font-weight:400;opacity:.7;font-size:.75rem}
+.tb-group{display:flex;align-items:center;gap:6px}
+.tb-label{font-size:.75rem;opacity:.75}
+.topbar select{font:inherit;font-size:.85rem;padding:5px 8px;border-radius:8px;border:1px solid #3A4B61;background:#17283C;color:#fff}
+.seg{display:inline-flex;border:1px solid #3A4B61;border-radius:9px;overflow:hidden}
+.seg button{background:transparent;color:#cfd8e3;border:0;padding:5px 10px;font-size:.82rem}
+.seg button.on{background:#19A3C4;color:#06222C;font-weight:600}
+.tb-btn{background:#17283C;color:#e6edf5;border:1px solid #3A4B61;border-radius:9px;padding:5px 10px;font-size:.82rem}
+.tb-btn.on{background:#19A3C4;color:#06222C;border-color:#19A3C4;font-weight:600}
+.spacer{flex:1}
+
+/* stage */
+.stage{display:grid;grid-template-columns:minmax(340px,440px) minmax(260px,400px);gap:26px;justify-content:center;align-items:start;padding:20px 18px 10px}
+.device{background:#fff;border-radius:26px;box-shadow:0 18px 40px rgba(15,27,42,.18),0 0 0 8px #0F1B2A;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 110px);min-height:640px;max-height:900px}
+.app-head{background:var(--insurer);color:#fff;padding:12px 16px 10px}
+.app-head .row{display:flex;align-items:center;gap:10px}
+.ins-logo{width:30px;height:30px;border-radius:50%;background:#fff;color:var(--insurer);display:grid;place-items:center;font-weight:800;font-size:.8rem}
+.app-head .t1{font-weight:600}
+.app-head .t2{font-size:.75rem;opacity:.8}
+.app-head .cl{margin-left:auto;font-size:.68rem;background:rgba(255,255,255,.14);padding:3px 8px;border-radius:999px}
+.steps{display:flex;gap:4px;padding:10px 12px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+.steps button{flex:1;min-width:58px;border:0;background:transparent;padding:4px 2px;border-radius:8px;color:var(--muted);font-size:.7rem;display:flex;flex-direction:column;align-items:center;gap:3px}
+.steps .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--soft);border:1px solid var(--line);font-weight:700;font-size:.72rem}
+.steps button.on{color:var(--brand-ink);font-weight:600}
+.steps button.on .n{background:var(--brand);color:#fff;border-color:var(--brand)}
+.steps button.done .n{background:var(--ok-soft);color:var(--ok);border-color:#BFE3CF}
+.screen{flex:1;overflow-y:auto;padding:14px 14px 18px;background:var(--soft);scroll-behavior:smooth}
+.app-foot{display:flex;gap:8px;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--line);background:#fff}
+
+/* rail */
+.rail{background:#fff;border-radius:18px;padding:16px 18px;box-shadow:0 6px 18px rgba(15,27,42,.08);position:sticky;top:76px}
+.rail h3{margin:0 0 2px;font-size:.78rem;text-transform:uppercase;letter-spacing:.6px;color:var(--muted)}
+.rail h2{margin:0 0 10px;font-size:1.05rem}
+.rail ul{margin:0 0 10px;padding-left:18px;font-size:.88rem}
+.rail li{margin:4px 0}
+.rail .box{border-radius:10px;padding:9px 11px;margin:8px 0;font-size:.84rem}
+.rail .guard{background:var(--risk-soft);color:#7A1A12}
+.rail .value{background:var(--ok-soft);color:#0E5233}
+.rail .ai{background:var(--info-soft);color:#173E8F}
+.rail .foot{font-size:.74rem;color:var(--muted);margin-top:10px}
+.disclaimer{text-align:center;font-size:.74rem;color:var(--muted);padding:6px 12px 16px}
+
+/* generic */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:13px 14px;margin-bottom:11px}
+.card h4{margin:0 0 6px;font-size:.98rem}
+.card p{margin:4px 0}
+.muted{color:var(--muted)}
+.small{font-size:.82rem}
+.xs{font-size:.74rem}
+.row{display:flex;align-items:center;gap:8px}
+.between{justify-content:space-between}
+.wrap{flex-wrap:wrap}
+.grow{flex:1}
+.btn{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:10px;padding:8px 13px;font-size:.88rem}
+.btn:hover{border-color:#B9C6D3}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.btn-primary:hover{background:var(--brand-ink)}
+.btn-soft{background:var(--brand-soft);border-color:#C3E2EA;color:var(--brand-ink);font-weight:600}
+.btn-link{border:0;background:none;color:var(--brand);padding:2px 0;font-size:.82rem;font-weight:600}
+.btn-block{width:100%}
+.btn[disabled]{opacity:.5;cursor:default}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:.72rem;padding:2px 8px;border-radius:999px;font-weight:600;white-space:nowrap}
+.c-high{background:var(--ok-soft);color:var(--ok)}
+.c-medium{background:var(--warn-soft);color:var(--warn)}
+.c-low{background:var(--risk-soft);color:var(--risk)}
+.c-info{background:var(--info-soft);color:var(--info)}
+.c-np{background:var(--np-soft);color:var(--np)}
+.c-violet{background:var(--violet-soft);color:var(--violet)}
+.ref{font-size:.72rem;color:var(--brand-ink);background:var(--brand-soft);border-radius:6px;padding:1px 6px;font-weight:600;white-space:nowrap}
+.hero{background:linear-gradient(135deg,#0B6E8A,#12445E);color:#fff;border:0}
+.hero .muted{color:#CFE6EE}
+.avatar{width:38px;height:38px;border-radius:50%;background:#fff;color:var(--brand-ink);display:grid;place-items:center;font-weight:700;flex:none}
+.pill-note{font-size:.76rem;background:rgba(255,255,255,.15);border-radius:8px;padding:6px 8px;margin-top:8px}
+.consent{border-left:4px solid var(--brand)}
+.sec-title{font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:14px 2px 7px;font-weight:700}
+
+/* cover */
+.term{display:grid;grid-template-columns:34px 1fr;gap:10px}
+.term .ic{width:34px;height:34px;border-radius:10px;background:var(--brand-soft);display:grid;place-items:center;font-size:1.05rem}
+.term .val{font-weight:700;color:var(--brand-ink);font-size:.92rem}
+.clause{margin-top:8px;background:#FBF7EC;border-left:3px solid #C9A227;font-family:Georgia,"Times New Roman",serif;font-size:.8rem;padding:8px 10px;border-radius:0 8px 8px 0;color:#3B3320}
+.reading{height:8px;border-radius:5px;background:var(--line);overflow:hidden}
+.reading i{display:block;height:100%;width:0;background:var(--brand);animation:fill 1.6s ease forwards}
+@keyframes fill{to{width:100%}}
+.qchips{display:flex;flex-wrap:wrap;gap:6px}
+.qchip{border:1px solid #BFDCE5;background:#fff;color:var(--brand-ink);border-radius:999px;padding:5px 10px;font-size:.8rem}
+.qchip.used{opacity:.55}
+.qa .q{font-weight:600;margin-bottom:4px}
+
+/* chat */
+.chat{display:flex;flex-direction:column;gap:8px}
+.msg{max-width:86%;padding:9px 12px;border-radius:14px;font-size:.9rem}
+.msg.bot{align-self:flex-start;background:#fff;border:1px solid var(--line);border-top-left-radius:4px}
+.msg.user{align-self:flex-end;background:var(--brand);color:#fff;border-top-right-radius:4px}
+.msg.card-msg{background:#fff;border:1px solid #CFE3D8;border-left:4px solid var(--ok)}
+.msg.case-msg{background:#fff;border:1px solid #C8D7F3;border-left:4px solid var(--info)}
+.typing{align-self:flex-start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:8px 12px;color:var(--muted);font-size:.8rem}
+.opts{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 2px}
+.opt{border:1px solid var(--brand);color:var(--brand-ink);background:#fff;border-radius:999px;padding:6px 12px;font-size:.84rem;font-weight:600}
+.opt.alt{border-color:var(--line);color:var(--muted);font-weight:400}
+.composer{display:flex;gap:6px;margin-top:10px}
+.composer input{flex:1;font:inherit;font-size:.88rem;padding:9px 11px;border:1px solid var(--line);border-radius:10px}
+.mic{width:40px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:1rem}
+.mic.on{background:var(--risk-soft);border-color:#F3B8B1;animation:pulse 1s infinite}
+@keyframes pulse{50%{transform:scale(1.06)}}
+
+/* paid */
+.variant{display:flex;gap:6px;margin-bottom:10px}
+.variant button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px;font-size:.84rem}
+.variant button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-ink);font-weight:700}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
+.nums .k{font-size:.72rem;color:var(--muted)}
+.nums .v{font-size:1.18rem;font-weight:800}
+.nums .v.pay{color:var(--ok)}
+.nums .v.you{color:var(--risk)}
+.bar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:10px 0 6px;background:var(--line)}
+.bar span{display:block;height:100%}
+.s-paid{background:#1F9D63}.s-np{background:#9AA5B3}.s-prop{background:#E58A1F}.s-sub{background:#D2463A}.s-copay{background:#7E57C2}.s-mt{background:#D2463A}.s-si{background:#8B1E14}
+.legend{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.72rem;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.why{display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:start;padding:7px 0;border-top:1px dashed var(--line);font-size:.86rem}
+.why:first-of-type{border-top:0}
+.why .sw{width:10px;height:10px;border-radius:3px;margin-top:5px}
+.why .amt{font-weight:700;white-space:nowrap}
+.whatif{background:#FFFDF6;border:1px solid #F1DFAE}
+.items{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:6px}
+.items td{padding:5px 4px;border-top:1px solid var(--line);vertical-align:top}
+.items td.r{text-align:right;white-space:nowrap}
+.flag{display:grid;grid-template-columns:22px 1fr;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:.86rem}
+.flag:first-of-type{border-top:0}
+.flag .fi{font-size:1rem;line-height:1.3}
+.meter{height:10px;border-radius:6px;background:var(--line);overflow:hidden;margin:4px 0}
+.meter i{display:block;height:100%;background:var(--brand)}
+.meter i.after{background:#7FC4D6}
+.note{font-size:.76rem;color:var(--muted);background:#fff;border:1px dashed #C9D3DD;border-radius:10px;padding:8px 10px}
+ul.qs{margin:4px 0 0;padding-left:18px;font-size:.86rem}
+ul.qs li{margin:3px 0}
+
+/* prepare */
+.doc{display:grid;grid-template-columns:26px 1fr auto;gap:8px;align-items:start;padding:9px 0;border-top:1px solid var(--line)}
+.doc:first-of-type{border-top:0}
+.doc .di{font-size:1.05rem}
+.doc .dn{font-weight:600;font-size:.88rem}
+.doc .dc{font-size:.8rem;color:var(--muted)}
+.scan{height:6px;border-radius:4px;background:var(--line);overflow:hidden;margin:8px 0}
+.scan i{display:block;height:100%;width:30%;background:var(--brand);animation:scan 1s ease-in-out infinite alternate}
+@keyframes scan{from{margin-left:0}to{margin-left:70%}}
+.ready{display:flex;gap:6px;flex-wrap:wrap}
+
+/* track */
+.owner{display:grid;grid-template-columns:40px 1fr;gap:10px;align-items:center}
+.owner .avatar{background:var(--brand-soft)}
+.ball{display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--info-soft);color:var(--info)}
+.clocks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.clock{border:1px solid var(--line);border-radius:10px;padding:8px 9px;background:#fff}
+.clock .cv{font-weight:800;font-size:1rem}
+.clock.ok{border-color:#BFE3CF;background:#F4FBF7}
+.clock.bad{border-color:#F3B8B1;background:#FFF6F5}
+.tl{position:relative;margin-left:8px;padding-left:18px;border-left:2px solid var(--line)}
+.ev{position:relative;padding:2px 0 12px}
+.ev .dot{position:absolute;left:-26px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff;border:3px solid var(--brand)}
+.ev.alert .dot{border-color:var(--risk)}
+.ev.new{animation:slidein .45s ease}
+@keyframes slidein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.ev .when{font-size:.74rem;color:var(--muted);font-weight:600}
+.ev .what{font-size:.88rem}
+.ev .who{font-size:.68rem;text-transform:uppercase;letter-spacing:.4px;font-weight:700;color:var(--muted);margin-left:6px}
+.ev.alert .what{color:#7A1A12;background:var(--risk-soft);border-radius:8px;padding:6px 8px;margin-top:3px}
+.recon{border-left:4px solid var(--ok)}
+textarea.draft{width:100%;min-height:180px;font:inherit;font-size:.8rem;border:1px solid var(--line);border-radius:10px;padding:9px;background:#FCFCFD}
+.path{display:flex;flex-direction:column;gap:6px;font-size:.82rem}
+.path div{display:flex;gap:8px;align-items:flex-start}
+.path b{min-width:20px;height:20px;border-radius:50%;background:var(--brand-soft);color:var(--brand-ink);display:grid;place-items:center;font-size:.72rem}
+.hr-view{background:#FBFCFE;border:1px dashed #B9C9E6}
+
+/* insurer view */
+.ins-wrap{max-width:1180px;margin:0 auto;padding:20px 18px 6px}
+.ins-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:12px}
+.ins-head h1{margin:0;font-size:1.35rem}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.kpi{background:#fff;border-radius:14px;padding:13px 14px;border:1px solid var(--line)}
+.kpi .k{font-size:.76rem;color:var(--muted)}
+.kpi .v{font-size:1.45rem;font-weight:800;margin:2px 0}
+.kpi .s{font-size:.76rem}
+table.cases{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;font-size:.84rem}
+table.cases th{text-align:left;background:#F2F5F9;font-size:.74rem;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);padding:9px 10px}
+table.cases td{padding:10px;border-top:1px solid var(--line);vertical-align:top}
+.ins-grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-top:14px}
+
+/* modal + toast */
+.backdrop{position:fixed;inset:0;background:rgba(15,27,42,.45);display:grid;place-items:center;z-index:50;padding:16px}
+.modal{background:#fff;border-radius:16px;max-width:420px;width:100%;padding:18px}
+.modal h3{margin:0 0 8px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#0F1B2A;color:#fff;padding:10px 16px;border-radius:12px;font-size:.86rem;z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:90vw}
+
+@media (max-width:900px){
+  .stage{grid-template-columns:1fr;padding:12px}
+  .device{height:auto;max-height:none;min-height:0;box-shadow:0 0 0 1px var(--line);border-radius:18px}
+  .screen{overflow:visible}
+  .rail{position:static}
+  .kpis{grid-template-columns:1fr 1fr}
+  .ins-grid{grid-template-columns:1fr}
+}
+@media print{.topbar{position:static}}
+html.shot .topbar,html.shot .rail,html.shot .disclaimer{display:none}
+html.shot body{background:#fff}
+html.shot .stage{display:block;padding:0}
+html.shot .device{height:100vh;max-height:none;min-height:0;border-radius:0;box-shadow:none}
+
+</style>
+<script>
+  window.__errors = [];
+  window.addEventListener('error', function (e) { window.__errors.push(String(e.message) + ' @' + (e.filename || '') + ':' + (e.lineno || '')); var d = document.getElementById('errs'); if (d) d.textContent = window.__errors.join(' | '); });
+</script>
+</head>
+<body>
+<header class="topbar" id="topbar"></header>
+<main class="stage" id="stage">
+  <section class="device" aria-label="ClaimLens inside your insurer's app">
+    <div class="app-head" id="apphead"></div>
+    <nav class="steps" id="steps" aria-label="Steps"></nav>
+    <div class="screen" id="screen"></div>
+    <div class="app-foot" id="appfoot"></div>
+  </section>
+  <aside class="rail" id="rail" aria-label="Presenter notes"></aside>
+</main>
+<section id="ins" hidden></section>
+<p class="disclaimer" id="disc"></p>
+<div id="overlay"></div>
+<div id="errs" hidden></div>
+<script>
+/* ClaimLens prototype - shared data. All people, policies, hospitals and numbers are synthetic. */
+window.CL = window.CL || {};
+(function (CL) {
+  const L = (en, hi) => ({ en, hi });
+  CL.L = L;
+  CL.INR = n => '\u20B9' + Math.round(n).toLocaleString('en-IN');
+  CL.scenarios = {};
+  CL.order = ['maternity', 'older', 'group', 'cancer'];
+
+  CL.ui = {
+    insurer: L('Your Insurer', 'आपकी बीमा कंपनी'),
+    claimHelp: L('Claim help', 'क्लेम सहायता'),
+    inside: L('ClaimLens inside', 'ClaimLens द्वारा'),
+    steps: [L('Start', 'शुरुआत'), L('Your cover', 'आपका कवर'), L('Tell us', 'बताएँ'), L("What's paid", 'कितना मिलेगा'), L('Prepare', 'तैयारी'), L('Track', 'स्थिति')],
+    next: L('Next', 'आगे'), back: L('Back', 'पीछे'), finish: L('Done', 'पूरा'),
+    consentTitle: L('Before we start', 'शुरू करने से पहले'),
+    consentBody: L('ClaimLens works for your insurer. It reads your policy and documents only to explain your cover, prepare your claim and show where it stands. It does not decide claims and does not give medical or legal advice. You can withdraw consent at any time.',
+      'ClaimLens आपकी बीमा कंपनी के लिए काम करता है। यह आपकी पॉलिसी और दस्तावेज़ केवल आपका कवर समझाने, क्लेम तैयार करने और उसकी स्थिति दिखाने के लिए पढ़ता है। यह क्लेम पर फ़ैसला नहीं करता और मेडिकल या क़ानूनी सलाह नहीं देता। आप कभी भी सहमति वापस ले सकते हैं।'),
+    agree: L('I agree, continue', 'मैं सहमत हूँ, आगे बढ़ें'),
+    agreed: L('Consent recorded', 'सहमति दर्ज'),
+    readPolicy: L('Read my policy', 'मेरी पॉलिसी पढ़ें'),
+    reading: L('Reading your policy: finding limits, waiting periods and exclusions…', 'आपकी पॉलिसी पढ़ी जा रही है: सीमाएँ, प्रतीक्षा अवधि और अपवाद खोजे जा रहे हैं…'),
+    found: L('key terms found, each linked to its clause', 'मुख्य शर्तें मिलीं, हर एक अपनी शर्त से जुड़ी'),
+    showClause: L('Show clause', 'शर्त देखें'), hideClause: L('Hide clause', 'शर्त छिपाएँ'),
+    conf: { high: L('High confidence', 'भरोसा: ऊँचा'), medium: L('Medium confidence', 'भरोसा: मध्यम'), low: L('Low confidence', 'भरोसा: कम') },
+    askTitle: L('Ask about your cover', 'अपने कवर के बारे में पूछें'),
+    askExpert: L('Ask a claims expert', 'क्लेम विशेषज्ञ से पूछें'),
+    lowNote: L('ClaimLens will not guess when the policy is silent.', 'जब पॉलिसी में जवाब नहीं होता, ClaimLens अंदाज़ा नहीं लगाता।'),
+    typeHere: L('Type or speak in English or Hindi', 'अंग्रेज़ी या हिंदी में लिखें या बोलें'),
+    listening: L('Listening… (simulated in prototype)', 'सुन रहे हैं… (प्रोटोटाइप में नकली)'),
+    typing: L('ClaimLens is typing…', 'ClaimLens लिख रहा है…'),
+    protoPath: L('This prototype follows one path. Please pick the highlighted option.', 'यह प्रोटोटाइप एक ही रास्ता दिखाता है। कृपया हाइलाइट किया हुआ विकल्प चुनें।'),
+    seePaid: L('See what will be paid', 'देखें कितना मिलेगा'),
+    estimate: L('Hospital estimate', 'अस्पताल का अनुमान'),
+    insurerPays: L('Insurer likely pays', 'बीमा कंपनी लगभग देगी'),
+    youPay: L('You likely pay', 'आपको लगभग देना होगा'),
+    whyGap: L('Why you pay this', 'आपको यह क्यों देना होगा'),
+    paid: L('Paid by insurer', 'बीमा कंपनी देगी'),
+    r_np: L('Items on the IRDAI non-payable list', 'IRDAI की देय-नहीं सूची वाली चीज़ें'),
+    r_prop: L('Room above your limit: room-linked charges cut in proportion', 'सीमा से महँगा कमरा: कमरे से जुड़े ख़र्च अनुपात में कटे'),
+    r_sub: L('Above the policy limit for this treatment', 'इस इलाज की पॉलिसी सीमा से ऊपर'),
+    r_copay: L('Your co-payment share', 'आपका को-पेमेंट हिस्सा'),
+    r_mt: L('Above the modern-treatment limit', 'मॉडर्न ट्रीटमेंट सीमा से ऊपर'),
+    r_si: L('Above your remaining sum insured', 'बची बीमा राशि से ऊपर'),
+    whatIf: L('What if I choose a room within my limit?', 'अगर मैं सीमा के अंदर वाला कमरा लूँ तो?'),
+    showItems: L('Show line items', 'बिल की लाइनें देखें'), hideItems: L('Hide line items', 'बिल की लाइनें छिपाएँ'),
+    st: { payable: L('Payable', 'देय'), reduced: L('Reduced', 'कम'), np: L('Not payable', 'देय नहीं') },
+    risks: L('What could be deducted or rejected', 'क्या कट सकता है या अस्वीकार हो सकता है'),
+    askHosp: L('Questions you can ask the hospital or doctor', 'अस्पताल या डॉक्टर से पूछने के सवाल'),
+    notDecision: L('This is an estimate, not a claim decision. Your insurer decides the claim. Amounts are calculated by fixed rules from your policy terms, not by AI.', 'यह एक अनुमान है, क्लेम का फ़ैसला नहीं। फ़ैसला आपकी बीमा कंपनी करेगी। राशि आपकी पॉलिसी की शर्तों से तय नियमों द्वारा निकाली गई है, AI द्वारा नहीं।'),
+    tellInsurer: L('Tell your insurer', 'बीमा कंपनी को सूचना दें'),
+    sendNotice: L('Send notice now', 'अभी सूचना भेजें'),
+    noticeSent: L('Notice sent', 'सूचना भेजी गई'),
+    docs: L('Documents', 'दस्तावेज़'),
+    runCheck: L('Pre-check my documents', 'मेरे दस्तावेज़ जाँचें'),
+    checking: L('Checking names, dates, signatures and registration numbers…', 'नाम, तारीख़, हस्ताक्षर और रजिस्ट्रेशन नंबर जाँचे जा रहे हैं…'),
+    markFixed: L('Mark fixed', 'ठीक हो गया'),
+    readyLbl: L('Ready', 'तैयार'), fixLbl: L('To fix', 'ठीक करना है'), hospLbl: L('From hospital', 'अस्पताल से'),
+    dstat: { ok: L('Ready', 'तैयार'), warn: L('Check', 'जाँचें'), missing: L('Missing', 'नहीं है'), pending: L('Hospital', 'अस्पताल'), up: L('Uploaded', 'अपलोड') },
+    caseOwner: L('Your case owner', 'आपके केस अधिकारी'),
+    whoNow: L('Who has it now', 'अभी किसके पास है'),
+    who: { hospital: L('Hospital', 'अस्पताल'), insurer: L('Insurer', 'बीमा कंपनी'), tpa: L('TPA', 'TPA'), you: L('You', 'आप'), hr: L('HR', 'HR'), closed: L('Closed', 'बंद') },
+    rule1h: L('Cashless decision · 1-hour rule', 'कैशलेस फ़ैसला · 1 घंटे का नियम'),
+    rule3h: L('Discharge approval · 3-hour rule', 'डिस्चार्ज मंज़ूरी · 3 घंटे का नियम'),
+    notYet: L('Not started', 'शुरू नहीं'),
+    nextUpdate: L('Next update', 'अगला अपडेट'), showAll: L('Show all', 'सभी देखें'),
+    approvedSoFar: L('Approved so far', 'अब तक मंज़ूर'),
+    expected: L('ClaimLens expects the insurer to pay', 'ClaimLens के हिसाब से बीमा कंपनी देगी'),
+    belowExp: L('below what your policy should pay. The hospital can ask for an enhancement.', 'आपकी पॉलिसी के हिसाब से मिलने वाली राशि से कम। अस्पताल बढ़ोतरी माँग सकता है।'),
+    matchesExp: L('Matches what your policy should pay.', 'आपकी पॉलिसी के हिसाब से सही।'),
+    recon: L('Estimate vs final', 'अनुमान बनाम अंतिम'),
+    raise: L('Raise a concern', 'चिंता दर्ज करें'),
+    draftNote: L('Draft prepared by ClaimLens from your case timeline. Review and edit before sending. This is not legal advice.', 'यह ड्राफ़्ट ClaimLens ने आपके केस की टाइमलाइन से बनाया है। भेजने से पहले पढ़ें और बदलें। यह क़ानूनी सलाह नहीं है।'),
+    sendGrievance: L('Send to insurer (simulated)', 'बीमा कंपनी को भेजें (नकली)'),
+    grievanceSent: L('Sent to the grievance officer. A reply is due within 14 days.', 'शिकायत अधिकारी को भेजा गया। 14 दिनों में जवाब आना चाहिए।'),
+    path: [L('Insurer grievance team must reply within 14 days.', 'बीमा कंपनी की शिकायत टीम को 14 दिनों में जवाब देना होगा।'),
+      L('Not resolved? Complain on IRDAI Bima Bharosa or go to the Insurance Ombudsman (free, claims up to ₹50 lakh).', 'हल नहीं हुआ? IRDAI बीमा भरोसा पर शिकायत करें या बीमा लोकपाल के पास जाएँ (निःशुल्क, ₹50 लाख तक के क्लेम)।'),
+      L('After that: consumer commission or court.', 'उसके बाद: उपभोक्ता आयोग या अदालत।')],
+    expertTitle: L('Connecting you to a claims expert', 'आपको क्लेम विशेषज्ञ से जोड़ा जा रहा है'),
+    expertBody: L("Your question and the clause ClaimLens found are passed to your insurer's claims desk, so you don't have to repeat yourself. Pilot target: call-back within 30 minutes; priority line for senior citizens.", 'आपका सवाल और ClaimLens को मिली शर्त आपकी बीमा कंपनी के क्लेम डेस्क को भेजी जाती है, ताकि आपको दोबारा न बताना पड़े। पायलट लक्ष्य: 30 मिनट में कॉल-बैक; वरिष्ठ नागरिकों के लिए प्राथमिकता लाइन।'),
+    close: L('Close', 'बंद करें'),
+    speakNA: L('Read-aloud is not supported in this browser.', 'इस ब्राउज़र में सुनने की सुविधा नहीं है।'),
+    done: L('Journey complete', 'यात्रा पूरी'),
+    proto: L('Prototype · synthetic data · AI outputs are simulated · ClaimLens explains and prepares; your insurer decides claims.', 'प्रोटोटाइप · काल्पनिक डेटा · AI आउटपुट नकली हैं · ClaimLens समझाता और तैयार करता है; क्लेम का फ़ैसला बीमा कंपनी करती है।')
+  };
+
+  CL.common = {
+    nonPay: { ref: 'Annexure I', text: 'List I sets out items for which no payment shall be made under this Policy. Lists II to IV set out items that are subsumed into room charges, procedure charges and costs of treatment and are not payable separately. (Based on the IRDAI standard list of non-payable items.)' },
+    prop: { ref: 'D.6', text: 'Proportionate deduction: where the Insured Person occupies a room category whose charge per day exceeds the eligible limit, the Company shall pay Associated Medical Expenses in the proportion that the eligible room rent bears to the room rent actually incurred. Proportionate deduction shall not apply to pharmacy, consumables, implants, medical devices, diagnostics or ICU charges, or where the hospital does not follow differential billing by room category.' }
+  };
+
+  /* Presenter notes shown beside the phone. English only: they explain the product, not the policy. */
+  CL.rail = [
+    { t: 'Embedded, white-labelled, consent first', b: ['Lives inside the insurer\'s app, website or WhatsApp; the user never downloads anything new.', 'Purpose-specific consent under the DPDP Act 2023. The insurer is the data fiduciary; ClaimLens is its processor.', 'Same flow for every cohort: use the scenario switch at the top.'], g: 'Never decides a claim. Never gives medical or legal advice.', v: 'Insurer value: one consented channel for every claim conversation.', ai: '' },
+    { t: 'Explain: AI reads the policy', b: ['An LLM extracts limits, waiting periods, sub-limits, co-pays and exclusions from the policy wording or group benefit summary into structured terms.', 'Every answer shows the clause it came from, plus a confidence level.', 'High = explicit clause. Medium = needs interpretation. Low = not found, so it hands off to a person.'], g: 'Silence in the policy is never filled with a guess.', v: 'Targets the #2 pain point: not knowing what is covered until claim time.', ai: 'AI fit: reading 40-70 page wordings is exactly what language models do well.' },
+    { t: 'Tell us: conversational case creation', b: ['English or Hindi, typed or spoken, with large text for older users.', 'Builds a structured case: event type, network check, dates, estimate, intimation.', 'Sends the insurer notice within policy timelines (48 hours for planned, 24 hours for emergency).'], g: 'Asks only what the claim needs (data minimisation).', v: 'Late intimation is a common avoidable rejection reason.', ai: 'AI fit: turns free-form speech into a structured case.' },
+    { t: 'What will actually be paid', b: ['AI reads the hospital estimate into line items.', 'A deterministic calculator (not the LLM) applies sum insured, sub-limits, room-rent proportionate deduction, co-pay and the non-payable list.', 'Shows what could be deducted or rejected, and neutral questions to ask the hospital.'], g: 'No judgement on medical necessity. No accusations about any hospital.', v: 'Targets ranks 1-4: rejections, unclear cover, partial approvals, non-payables.', ai: 'AI fit: reading messy estimates. Money maths stays rule-based and auditable.' },
+    { t: 'Prepare: document pre-check', b: ['Checks names, dates, signatures and doctor registration numbers before the insurer sees them.', 'Reuses documents across repeat claims (for example every chemotherapy cycle).', 'Flags issues the patient can fix now, not after a query or rejection.'], g: 'Never edits or fabricates a document; only flags.', v: 'Fewer queries and avoidable rejections; faster pre-authorisation.', ai: 'AI fit: OCR plus rules; low risk because a person fixes the document.' },
+    { t: 'Track: one status view, one owner', b: ['Hospital, TPA, insurer and (with consent) HR on one timeline, with who has the case now.', 'IRDAI clocks: 1-hour cashless decision and 3-hour discharge approval, with alerts to the case owner.', 'Estimate vs approved vs final, and a drafted grievance if something goes wrong.'], g: 'Grievance drafts are reviewed and sent by the user. Not legal advice.', v: 'Fewer repeat status calls; time-stamped evidence of compliance for IRDAI.', ai: 'AI fit: drafting a clear grievance from the case record.' }
+  ];
+})(window.CL);
+
+</script>
+<script>
+/* ClaimLens prototype - deterministic payout calculator.
+   The LLM never does money maths. It only reads documents into structured terms and line items;
+   this rule engine applies them in a fixed, auditable order:
+   1) remove non-payable items  2) room-rent proportionate deduction on associated expenses only
+   3) treatment sub-limit  4) modern-treatment limit  5) co-payment  6) remaining sum insured. */
+window.CL = window.CL || {};
+(function (CL) {
+  const ASSOC = { room: 1, nursing: 1, fees: 1, ot: 1 };
+  const sum = a => a.reduce((s, x) => s + x, 0);
+
+  CL.compute = function (policy, estimate, variantKey, opts) {
+    opts = opts || {};
+    const v = estimate.variants[variantKey];
+    const rate = opts.roomRate != null ? opts.roomRate : estimate.roomRate;
+    const items = v.items.map(it => Object.assign({}, it));
+    if (opts.roomRate != null) items.forEach(it => { if (it.kind === 'room') it.amount = opts.roomRate * v.days; });
+    (opts.adjust || []).forEach(a => { const it = items.find(i => i.id === a.id); if (it) it.amount += a.delta; });
+
+    const total = sum(items.map(i => i.amount));
+    const np = sum(items.filter(i => i.kind === 'np').map(i => i.amount));
+    let ratio = 1, prop = 0;
+    if (policy.roomCap && rate && rate > policy.roomCap) {
+      ratio = policy.roomCap / rate;
+      prop = Math.round(sum(items.filter(i => ASSOC[i.kind]).map(i => i.amount)) * (1 - ratio));
+    }
+    items.forEach(i => { i.status = i.kind === 'np' ? 'np' : (ratio < 1 && ASSOC[i.kind] ? 'reduced' : 'payable'); });
+
+    let admissible = total - np - prop;
+    let sub = 0, subLimit = null;
+    if (v.sublimit && policy.sublimits && policy.sublimits[v.sublimit] != null) {
+      subLimit = policy.sublimits[v.sublimit];
+      if (admissible > subLimit) { sub = admissible - subLimit; admissible = subLimit; }
+    }
+    let mt = 0;
+    const mtUsed = sum(items.filter(i => i.mt).map(i => i.amount));
+    if (policy.mtRemaining != null && mtUsed > policy.mtRemaining) { mt = mtUsed - policy.mtRemaining; admissible -= mt; }
+    const copay = Math.round(admissible * (policy.copay || 0));
+    let payable = admissible - copay, si = 0;
+    if (policy.siAvailable != null && payable > policy.siAvailable) { si = payable - policy.siAvailable; payable = policy.siAvailable; }
+    return { total, np, prop, ratio, sub, subLimit, mt, mtUsed, copay, si, payable, youPay: total - payable, items, rate, days: v.days };
+  };
+
+  /* Builds every number a scenario needs, so screens, timeline text and the insurer view always agree. */
+  CL.results = function (sc, variantKey) {
+    const p = sc.policy, e = sc.estimate;
+    const key = variantKey || e.defaultVariant;
+    const est = CL.compute(p, e, key);
+    const alt = e.altRoom ? CL.compute(p, e, key, { roomRate: e.altRoom.rate }) : null;
+    const f = sc.final;
+    const expected = CL.compute(p, e, f.variant, { roomRate: f.roomRate });
+    const fin = CL.compute(p, e, f.variant, { roomRate: f.roomRate, adjust: f.adjust });
+    const finEstimate = CL.compute(p, e, f.variant);
+    return { est, alt, expected, final: fin, finEstimate, variant: key };
+  };
+})(window.CL);
+
+</script>
+<script>
+/* Scenario 1 (lead): expecting mother, retail family floater. Synthetic data. */
+(function (CL) {
+  const L = CL.L, INR = CL.INR;
+  CL.scenarios.maternity = {
+    key: 'maternity',
+    label: L('Expecting mother (lead)', 'गर्भवती माँ (मुख्य)'),
+    cover: L('Retail family floater', 'रिटेल फ़ैमिली फ़्लोटर'),
+    user: { first: 'Priya', full: 'Priya Sharma', initials: 'PS', line: L('Priya Sharma, 29 · Pune · policyholder', 'प्रिया शर्मा, 29 · पुणे · पॉलिसीधारक') },
+    intro: L('Priya (29) is 34 weeks pregnant; her baby is due on 10 Dec 2026. She bought a retail family floater in March 2024. Before she is admitted, she wants to know what her policy will actually pay and what she will pay herself.',
+      'प्रिया (29) 34 हफ़्ते की गर्भवती हैं; डिलीवरी की संभावित तारीख़ 10 दिसंबर 2026 है। उन्होंने मार्च 2024 में रिटेल फ़ैमिली फ़्लोटर पॉलिसी ली थी। भर्ती से पहले वे जानना चाहती हैं कि पॉलिसी असल में कितना देगी और उन्हें ख़ुद कितना देना होगा।'),
+    consentExtra: null,
+    policy: { product: 'Family Health Plan (sample)', number: 'FHP-2024-118734', docs: L('Policy wording (62 pages) + schedule', 'पॉलिसी वर्डिंग (62 पेज) + शेड्यूल'), si: 500000, siAvailable: 500000, roomCap: 5000, copay: 0, sublimits: { mat_normal: 50000, mat_cs: 75000 } },
+    terms: [
+      { ic: '🤰', title: L('Maternity benefit', 'मैटरनिटी लाभ'), value: L('₹50,000 normal · ₹75,000 caesarean', 'सामान्य ₹50,000 · सिज़ेरियन ₹75,000'), plain: L('Covered. Your 24-month waiting period ended on 12 Mar 2026. The limit covers the whole delivery bill: room, doctors and medicines.', 'कवर है। आपकी 24 महीने की प्रतीक्षा अवधि 12 मार्च 2026 को पूरी हुई। यह सीमा डिलीवरी के पूरे बिल पर लागू है: कमरा, डॉक्टर और दवाइयाँ।'), ref: 'C.4.2', clause: 'Maternity Expenses: the Company shall indemnify Medical Expenses for the delivery of a child (normal or caesarean section) up to the limit in the Schedule (Normal delivery ₹50,000; Caesarean section ₹75,000) per delivery, provided the Insured Person has been continuously covered for 24 months. Pre-natal and post-natal expenses incurred during the Hospitalisation are included within this limit.', conf: 'high' },
+      { ic: '🛏️', title: L('Room rent limit', 'कमरे के किराए की सीमा'), value: L('₹5,000 a day (1% of sum insured)', '₹5,000 प्रति दिन (बीमा राशि का 1%)'), plain: L('In a costlier room, room-linked charges (doctor, nursing, theatre) are paid only in proportion. Medicines, tests and implants are not cut.', 'महँगे कमरे में कमरे से जुड़े ख़र्च (डॉक्टर, नर्सिंग, ऑपरेशन थिएटर) अनुपात में ही मिलते हैं। दवाइयों, जाँच और इम्प्लांट पर कटौती नहीं होती।'), ref: 'D.6', clause: CL.common.prop.text, conf: 'high' },
+      { ic: '👶', title: L('Newborn baby', 'नवजात शिशु'), value: L('Covered from birth, up to sum insured', 'जन्म से कवर, बीमा राशि तक'), plain: L('Medically necessary care for your baby, such as a NICU stay, is paid from your ₹5 lakh sum insured, not the maternity limit. Add your baby to the policy within 90 days.', 'बच्चे का ज़रूरी इलाज, जैसे NICU, ₹5 लाख की बीमा राशि से मिलेगा, मैटरनिटी सीमा से नहीं। 90 दिनों में बच्चे को पॉलिसी में जोड़ें।'), ref: 'C.4.5', clause: 'New Born Baby: Medical Expenses for a new born baby are covered from birth for Medically Necessary In-patient Treatment up to the Sum Insured, provided the baby is added to the Policy within 90 days of birth.', conf: 'medium' },
+      { ic: '🩺', title: L('Check-ups and scans', 'जाँच और स्कैन'), value: L('Only during the delivery stay', 'केवल डिलीवरी के लिए भर्ती में'), plain: L('Routine check-ups and scans before admission are not covered.', 'भर्ती से पहले की नियमित जाँच और स्कैन कवर नहीं हैं।'), ref: 'C.4.3', clause: 'Pre-natal and post-natal expenses are covered only when incurred during the Hospitalisation for delivery and within the Maternity Expenses limit. Out-patient consultations, routine scans and supplements are excluded.', conf: 'high' },
+      { ic: '🚫', title: L('Items never paid', 'कभी न मिलने वाले ख़र्च'), value: L('IRDAI standard non-payable list', 'IRDAI की मानक सूची'), plain: L('Kits, diapers, baby food, toiletries, registration fees and attendant food are not paid. Expect a few thousand rupees here.', 'किट, डायपर, बेबी फ़ूड, टॉयलेटरी, रजिस्ट्रेशन फ़ीस और अटेंडेंट का खाना नहीं मिलता। इसमें कुछ हज़ार रुपये लग सकते हैं।'), ref: 'Annexure I', clause: CL.common.nonPay.text, conf: 'high' },
+      { ic: '⏰', title: L('Tell the insurer in advance', 'बीमा कंपनी को पहले बताएँ'), value: L('At least 48 hours before admission', 'भर्ती से कम से कम 48 घंटे पहले'), plain: L('For a planned delivery, inform your insurer at least 48 hours before admission. ClaimLens can send this for you.', 'तय डिलीवरी के लिए भर्ती से कम से कम 48 घंटे पहले बीमा कंपनी को बताएँ। ClaimLens यह आपकी ओर से भेज सकता है।'), ref: 'E.1.1', clause: 'In the case of planned Hospitalisation, the Insured Person shall intimate the Company or its TPA at least 48 hours prior to admission.', conf: 'high' },
+      { ic: '✅', title: L('Co-payment', 'को-पेमेंट'), value: L('None', 'कोई नहीं'), plain: L('You do not share a percentage of the bill on this policy.', 'इस पॉलिसी में आपको बिल का कोई प्रतिशत नहीं देना होता।'), ref: 'Schedule', clause: 'Co-payment: Not applicable.', conf: 'high' }
+    ],
+    qa: [
+      { q: L('Is a C-section covered?', 'क्या सिज़ेरियन कवर है?'), a: L('Yes. A caesarean delivery is covered up to ₹75,000 for the whole hospital bill of the delivery.', 'हाँ। सिज़ेरियन डिलीवरी ₹75,000 तक कवर है, डिलीवरी के पूरे अस्पताल बिल के लिए।'), ref: 'C.4.2', conf: 'high' },
+      { q: L("Will my baby's NICU stay be covered?", 'क्या बच्चे का NICU ख़र्च कवर होगा?'), a: L('Probably yes, from your ₹5 lakh sum insured and not the maternity limit, if it is medically necessary. The wording leaves room for interpretation, so ask your insurer to confirm in writing.', 'शायद हाँ, अगर इलाज ज़रूरी है तो ₹5 लाख की बीमा राशि से, मैटरनिटी सीमा से नहीं। शब्दों में व्याख्या की गुंजाइश है, इसलिए बीमा कंपनी से लिखित पुष्टि लें।'), ref: 'C.4.5', conf: 'medium' },
+      { q: L('Are my scans before admission covered?', 'क्या भर्ती से पहले के स्कैन कवर हैं?'), a: L('No. Routine scans and check-ups outside the delivery stay are not covered.', 'नहीं। डिलीवरी की भर्ती के बाहर के नियमित स्कैन और जाँच कवर नहीं हैं।'), ref: 'C.4.3', conf: 'high' },
+      { q: L('Is cord blood banking covered?', 'क्या कॉर्ड ब्लड बैंकिंग कवर है?'), a: L('I could not find this in your policy, so I will not guess. A claims expert can confirm.', 'आपकी पॉलिसी में यह नहीं मिला, इसलिए मैं अंदाज़ा नहीं लगाऊँगा। क्लेम विशेषज्ञ पुष्टि कर सकते हैं।'), ref: null, conf: 'low' }
+    ],
+    chat: [
+      { bot: [L('Hi Priya. What is coming up?', 'नमस्ते प्रिया। आगे क्या होने वाला है?')], opts: [{ label: L('Planned delivery', 'तय डिलीवरी') }, { label: L('Emergency admission', 'इमरजेंसी भर्ती'), alt: true }], voice: L('My delivery is planned at Sunrise Women\'s Hospital in early December', 'मेरी डिलीवरी दिसंबर की शुरुआत में सनराइज़ विमेंस हॉस्पिटल में तय है') },
+      { bot: [L('Congratulations! Which hospital?', 'बधाई हो! कौन-सा अस्पताल?')], opts: [{ label: L("Sunrise Women's Hospital, Pune", 'सनराइज़ विमेंस हॉस्पिटल, पुणे') }, { label: L('Another hospital', 'कोई और अस्पताल'), alt: true }] },
+      { bot: [{ card: 'net', text: L("Sunrise Women's Hospital is in your insurer's network. Cashless is available.", 'सनराइज़ विमेंस हॉस्पिटल आपकी बीमा कंपनी के नेटवर्क में है। कैशलेस उपलब्ध है।') }, L('When do you expect to be admitted?', 'भर्ती कब होने की उम्मीद है?')], opts: [{ label: L('Around 8 Dec', 'लगभग 8 दिसंबर') }, { label: L('Not sure yet', 'अभी पक्का नहीं'), alt: true }] },
+      { bot: [L("Do you have the hospital's estimate? A photo is enough.", 'क्या आपके पास अस्पताल का एस्टिमेट है? फ़ोटो काफ़ी है।')], opts: [{ label: L('📎 estimate_sunrise.jpg', '📎 estimate_sunrise.jpg') }, { label: L('Not yet', 'अभी नहीं'), alt: true }] },
+      { bot: [{ card: 'est', text: L('I read the estimate: normal delivery ₹65,000; caesarean ₹1,10,000; single AC room at ₹6,000 a day.', 'मैंने एस्टिमेट पढ़ा: सामान्य डिलीवरी ₹65,000; सिज़ेरियन ₹1,10,000; सिंगल AC कमरा ₹6,000 प्रति दिन।') }, { card: 'case', text: L('Case CL-26-0418 created · planned delivery · Sunrise Women\'s Hospital · around 8 Dec · cashless', 'केस CL-26-0418 बना · तय डिलीवरी · सनराइज़ विमेंस हॉस्पिटल · लगभग 8 दिसंबर · कैशलेस') }, L('Next, I will show what your policy will actually pay.', 'अब मैं दिखाऊँगा कि आपकी पॉलिसी असल में कितना देगी।')], opts: [] }
+    ],
+    estimate: {
+      hospital: "Sunrise Women's Hospital, Pune", roomLabel: L('Single AC room · ₹6,000/day', 'सिंगल AC कमरा · ₹6,000/दिन'), roomRate: 6000,
+      altRoom: { label: L('Twin-sharing room · ₹4,500/day', 'ट्विन-शेयरिंग कमरा · ₹4,500/दिन'), rate: 4500 }, defaultVariant: 'cs',
+      variants: {
+        normal: { label: L('Normal delivery', 'सामान्य डिलीवरी'), days: 2, sublimit: 'mat_normal', items: [
+          { id: 'room', label: L('Room (single AC) · 2 days', 'कमरा (सिंगल AC) · 2 दिन'), amount: 12000, kind: 'room' },
+          { id: 'nurse', label: L('Nursing care', 'नर्सिंग'), amount: 3000, kind: 'nursing' },
+          { id: 'fees', label: L('Obstetrician & paediatrician fees', 'प्रसूति और शिशु रोग विशेषज्ञ फ़ीस'), amount: 18000, kind: 'fees' },
+          { id: 'ot', label: L('Labour room charges', 'लेबर रूम शुल्क'), amount: 9000, kind: 'ot' },
+          { id: 'pharm', label: L('Medicines & IV fluids', 'दवाइयाँ और IV'), amount: 9500, kind: 'pharmacy' },
+          { id: 'diag', label: L('Lab tests', 'लैब जाँच'), amount: 4500, kind: 'diagnostics' },
+          { id: 'cons', label: L('Medical consumables', 'मेडिकल उपभोग्य सामान'), amount: 3000, kind: 'consumables' },
+          { id: 'np1', label: L('Delivery kit (items not itemised)', 'डिलीवरी किट (बिना ब्योरा)'), amount: 2200, kind: 'np' },
+          { id: 'np2', label: L('Diapers, baby food & toiletries', 'डायपर, बेबी फ़ूड और टॉयलेटरी'), amount: 1900, kind: 'np' },
+          { id: 'np3', label: L('Registration & file charges', 'रजिस्ट्रेशन और फ़ाइल शुल्क'), amount: 1000, kind: 'np' },
+          { id: 'np4', label: L('Attendant food', 'अटेंडेंट का खाना'), amount: 900, kind: 'np' }] },
+        cs: { label: L('Caesarean (C-section)', 'सिज़ेरियन'), days: 4, sublimit: 'mat_cs', items: [
+          { id: 'room', label: L('Room (single AC) · 4 days', 'कमरा (सिंगल AC) · 4 दिन'), amount: 24000, kind: 'room' },
+          { id: 'nurse', label: L('Nursing care', 'नर्सिंग'), amount: 6000, kind: 'nursing' },
+          { id: 'fees', label: L('Surgeon, anaesthetist & paediatrician fees', 'सर्जन, एनेस्थेटिस्ट और शिशु रोग विशेषज्ञ फ़ीस'), amount: 32000, kind: 'fees' },
+          { id: 'ot', label: L('Operation theatre charges', 'ऑपरेशन थिएटर शुल्क'), amount: 15000, kind: 'ot' },
+          { id: 'pharm', label: L('Medicines & IV fluids', 'दवाइयाँ और IV'), amount: 14000, kind: 'pharmacy' },
+          { id: 'diag', label: L('Lab tests', 'लैब जाँच'), amount: 6000, kind: 'diagnostics' },
+          { id: 'cons', label: L('Medical consumables', 'मेडिकल उपभोग्य सामान'), amount: 4500, kind: 'consumables' },
+          { id: 'np1', label: L('Delivery kit (items not itemised)', 'डिलीवरी किट (बिना ब्योरा)'), amount: 2800, kind: 'np' },
+          { id: 'np2', label: L('Diapers, baby food & toiletries', 'डायपर, बेबी फ़ूड और टॉयलेटरी'), amount: 2600, kind: 'np' },
+          { id: 'np3', label: L('Registration & file charges', 'रजिस्ट्रेशन और फ़ाइल शुल्क'), amount: 1000, kind: 'np' },
+          { id: 'np4', label: L('Attendant food', 'अटेंडेंट का खाना'), amount: 2100, kind: 'np' }] }
+      }
+    },
+    refs: { np: 'Annexure I', prop: 'D.6', sub: 'C.4.2' },
+    flags: r => [
+      { lv: 'certain', ref: 'C.4.2', conf: 'high', text: L(`The maternity limit caps what is paid at ${INR(r.est.subLimit)} for this delivery.`, `इस डिलीवरी के लिए मैटरनिटी सीमा भुगतान को ${INR(r.est.subLimit)} तक सीमित करती है।`) },
+      { lv: 'likely', ref: 'D.6', conf: 'high', text: L('Your room is above the ₹5,000 a day limit, so room-linked charges are cut in proportion. Here it does not change your payout, because the maternity limit is reached first.', 'आपका कमरा ₹5,000 प्रति दिन की सीमा से ऊपर है, इसलिए कमरे से जुड़े ख़र्च अनुपात में कटेंगे। यहाँ इससे भुगतान नहीं बदलता, क्योंकि मैटरनिटी सीमा पहले पूरी हो जाती है।') },
+      { lv: 'certain', ref: 'Annexure I', conf: 'high', text: L(`About ${INR(r.est.np)} of items are on the non-payable list.`, `लगभग ${INR(r.est.np)} की चीज़ें देय-नहीं सूची में हैं।`) },
+      { lv: 'check', ref: 'C.4.5', conf: 'medium', text: L('If your baby needs NICU care, it should be paid from the base sum insured. Confirm this with your insurer.', 'अगर बच्चे को NICU की ज़रूरत हो, तो यह मूल बीमा राशि से मिलना चाहिए। बीमा कंपनी से पुष्टि करें।') },
+      { lv: 'ok', ref: 'E.1.1', conf: 'high', text: L('No rejection risks found: waiting period completed on 12 Mar 2026. Send notice 48 hours before admission.', 'अस्वीकृति का कोई जोखिम नहीं मिला: प्रतीक्षा अवधि 12 मार्च 2026 को पूरी हुई। भर्ती से 48 घंटे पहले सूचना भेजें।') }
+    ],
+    questions: [L('Is the package price fixed? What is not included?', 'क्या पैकेज की क़ीमत तय है? इसमें क्या शामिल नहीं है?'), L('Which rooms cost ₹5,000 a day or less?', '₹5,000 प्रति दिन या कम वाले कौन-से कमरे हैं?'), L('If a C-section becomes necessary, how does the estimate change?', 'अगर सिज़ेरियन ज़रूरी हुआ, तो अनुमान कैसे बदलेगा?'), L('Which tests are routine for me, and which are optional?', 'मेरे लिए कौन-सी जाँचें ज़रूरी हैं और कौन-सी वैकल्पिक?'), L('Can you send the pre-authorisation 48 hours before admission?', 'क्या आप भर्ती से 48 घंटे पहले प्री-ऑथराइज़ेशन भेज सकते हैं?')],
+    docs: [
+      { name: L('Policy e-card', 'पॉलिसी ई-कार्ड'), pre: 'ok', status: 'ok', check: L('Fetched from your insurer.', 'बीमा कंपनी से लिया गया।') },
+      { name: L('Photo ID (Aadhaar)', 'फ़ोटो ID (आधार)'), pre: 'up', status: 'ok', check: L('Readable; name matches the policy.', 'साफ़ है; नाम पॉलिसी से मेल खाता है।') },
+      { name: L("Doctor's admission advice", 'डॉक्टर की भर्ती सलाह'), pre: 'up', status: 'warn', check: L("The doctor's registration number is not visible. Ask the clinic to add it.", 'डॉक्टर का रजिस्ट्रेशन नंबर नहीं दिख रहा। क्लिनिक से जोड़ने को कहें।') },
+      { name: L('Antenatal card & latest scan', 'एंटीनेटल कार्ड और ताज़ा स्कैन'), pre: 'up', status: 'warn', check: L("The card says 'Priya S.' but the policy says 'Priya Sharma'. Carry your ID and ask the hospital to use your policy name.", "कार्ड पर 'Priya S.' है, पॉलिसी में 'Priya Sharma'। ID साथ रखें और अस्पताल से पॉलिसी वाला नाम लिखवाएँ।") },
+      { name: L('Hospital estimate', 'अस्पताल का एस्टिमेट'), pre: 'up', status: 'ok', check: L('Read: two packages, room ₹6,000 a day.', 'पढ़ा गया: दो पैकेज, कमरा ₹6,000 प्रति दिन।') },
+      { name: L('Pre-authorisation form', 'प्री-ऑथराइज़ेशन फ़ॉर्म'), pre: 'pending', status: 'pending', check: L("The hospital's insurance desk fills this. Your details have been shared.", 'यह अस्पताल का इंश्योरेंस डेस्क भरता है। आपकी जानकारी भेज दी गई है।') },
+      { name: L('Bank details (only for reimbursement)', 'बैंक विवरण (केवल रीइम्बर्समेंट के लिए)'), pre: 'missing', status: 'missing', check: L('Not needed for cashless. Add it in case you pay first and claim later.', 'कैशलेस के लिए ज़रूरी नहीं। अगर पहले ख़ुद भुगतान करें तो जोड़ें।') }
+    ],
+    intimation: { kind: 'planned', rule: L('Planned admission: tell your insurer at least 48 hours before (Clause E.1.1).', 'तय भर्ती: कम से कम 48 घंटे पहले बीमा कंपनी को बताएँ (शर्त E.1.1)।'), ref: 'INT-26-55821', sent: L('Pre-notice sent for admission around 8 Dec. Ref INT-26-55821.', 'लगभग 8 दिसंबर की भर्ती के लिए पूर्व-सूचना भेजी गई। संदर्भ INT-26-55821।') },
+    owner: { name: 'Neha Kulkarni', initials: 'NK', role: L('Claims Care team, Your Insurer', 'क्लेम केयर टीम, आपकी बीमा कंपनी') },
+    timeline: [
+      { when: '06 Dec · 10:02', who: 'insurer', ball: 'hospital', text: L('Insurer acknowledged your pre-notice.', 'बीमा कंपनी ने आपकी पूर्व-सूचना स्वीकार की।') },
+      { when: '08 Dec · 08:40', who: 'hospital', ball: 'insurer', req: '1h', text: L('Admitted. Hospital sent a cashless request for ₹75,000.', 'भर्ती हुईं। अस्पताल ने ₹75,000 का कैशलेस अनुरोध भेजा।') },
+      { when: '08 Dec · 09:22', who: 'insurer', ball: 'hospital', tat: { rule: '1h', mins: 42 }, approved: 50000, text: L('Approved ₹50,000 to start (normal delivery package).', 'शुरुआत में ₹50,000 मंज़ूर (सामान्य डिलीवरी पैकेज)।') },
+      { when: '09 Dec · 13:10', who: 'hospital', ball: 'insurer', req: '1h', text: L('Doctor advised a C-section. Hospital asked to raise the approval to ₹75,000.', 'डॉक्टर ने सिज़ेरियन की सलाह दी। अस्पताल ने मंज़ूरी ₹75,000 करने का अनुरोध किया।') },
+      { when: '09 Dec · 13:48', who: 'insurer', ball: 'hospital', tat: { rule: '1h', mins: 38 }, approved: 75000, text: L('Raised to ₹75,000. The maternity limit is now fully used.', '₹75,000 तक बढ़ाया गया। मैटरनिटी सीमा पूरी इस्तेमाल हो गई।') },
+      { when: '12 Dec · 10:05', who: 'hospital', ball: 'insurer', req: '3h', text: r => L(`Final bill ${INR(r.final.total)} sent for discharge approval.`, `अंतिम बिल ${INR(r.final.total)} डिस्चार्ज मंज़ूरी के लिए भेजा गया।`) },
+      { when: '12 Dec · 12:20', who: 'insurer', ball: 'you', tat: { rule: '3h', mins: 135 }, approved: 75000, text: r => L(`Final approval ${INR(r.final.payable)}. You pay ${INR(r.final.youPay)} at the desk, close to the ${INR(r.finEstimate.youPay)} ClaimLens estimated.`, `अंतिम मंज़ूरी ${INR(r.final.payable)}। आप काउंटर पर ${INR(r.final.youPay)} देंगी, ClaimLens के ${INR(r.finEstimate.youPay)} अनुमान के क़रीब।`) },
+      { when: '12 Dec · 13:05', who: 'you', ball: 'closed', text: L('Discharged. Claim closed. Reminder set: add your baby to the policy within 90 days.', 'डिस्चार्ज। क्लेम बंद। रिमाइंडर: 90 दिनों में बच्चे को पॉलिसी में जोड़ें।') }
+    ],
+    final: { variant: 'cs', adjust: [{ id: 'cons', delta: 950 }] },
+    reconWhy: L('Extra consumables of ₹950 were added during the stay.', 'भर्ती के दौरान ₹950 के अतिरिक्त उपभोग्य सामान जुड़े।'),
+    escalation: { title: L('Ask for an item-wise explanation', 'हर मद की व्याख्या माँगें'), draft: L(
+      'To: Grievance Officer, Your Insurer\nPolicy: FHP-2024-118734 · Claim: CL-26-0418 · Patient: Priya Sharma\nSubject: Item-wise explanation of amounts not paid\n\nI was admitted to Sunrise Women\'s Hospital, Pune on 8 Dec 2026 for a caesarean delivery. The final bill was ₹1,10,950 and ₹75,000 was approved. I understand the maternity limit in Clause C.4.2. Please send an item-wise statement of the amounts not paid, with the policy clause for each, so that I can check them.\n\nRegards,\nPriya Sharma',
+      'सेवा में: शिकायत अधिकारी, आपकी बीमा कंपनी\nपॉलिसी: FHP-2024-118734 · क्लेम: CL-26-0418 · मरीज़: प्रिया शर्मा\nविषय: न दी गई राशि की मदवार व्याख्या\n\nमैं 8 दिसंबर 2026 को सिज़ेरियन डिलीवरी के लिए सनराइज़ विमेंस हॉस्पिटल, पुणे में भर्ती हुई थी। अंतिम बिल ₹1,10,950 था और ₹75,000 मंज़ूर हुए। मैं शर्त C.4.2 की मैटरनिटी सीमा समझती हूँ। कृपया न दी गई राशि का मदवार विवरण, हर मद की पॉलिसी शर्त के साथ भेजें, ताकि मैं उसे जाँच सकूँ।\n\nसादर,\nप्रिया शर्मा') }
+  };
+})(window.CL);
+
+</script>
+<script>
+/* Scenario 2: older parent hospitalised; adult child manages the claim. Retail senior citizens' plan. Synthetic data. */
+(function (CL) {
+  const L = CL.L, INR = CL.INR;
+  CL.scenarios.older = {
+    key: 'older',
+    label: L('Older parent (child managing)', 'बुज़ुर्ग पिता (बेटा संभाल रहा)'),
+    cover: L("Retail senior citizens' plan", 'रिटेल वरिष्ठ नागरिक प्लान'),
+    user: { first: 'Rohan', full: 'Rohan Iyer', initials: 'RI', line: L('Rohan Iyer, 36 · Bengaluru · helping his father Venkatesh, 68', 'रोहन अय्यर, 36 · बेंगलुरु · पिता वेंकटेश (68) की मदद कर रहे हैं') },
+    intro: L('Rohan (36) lives in Bengaluru. His father Venkatesh (68) was admitted as an emergency in Chennai this morning with pneumonia. Rohan is managing the claim from another city, and his father prefers Hindi and large text.',
+      'रोहन (36) बेंगलुरु में रहते हैं। उनके पिता वेंकटेश (68) आज सुबह निमोनिया के कारण चेन्नई में इमरजेंसी में भर्ती हुए। रोहन दूसरे शहर से क्लेम संभाल रहे हैं, और उनके पिता हिंदी और बड़े अक्षर पसंद करते हैं।'),
+    consentExtra: L('Venkatesh approved Rohan as his claim helper by OTP. He sees the same updates in Hindi and large text, and can withdraw access at any time.', 'वेंकटेश ने OTP से रोहन को अपना क्लेम सहायक बनाया है। वे भी वही अपडेट हिंदी और बड़े अक्षरों में देखते हैं, और कभी भी अनुमति वापस ले सकते हैं।'),
+    policy: { product: 'Senior Care Plan (sample)', number: 'SCP-2022-640215', docs: L('Policy wording (48 pages) + schedule + proposal form', 'पॉलिसी वर्डिंग (48 पेज) + शेड्यूल + प्रपोज़ल फ़ॉर्म'), si: 500000, siAvailable: 500000, roomCap: 5000, copay: 0.2, sublimits: {} },
+    terms: [
+      { ic: '➗', title: L('Co-payment', 'को-पेमेंट'), value: L('20% of every admissible claim', 'हर स्वीकार्य क्लेम का 20%'), plain: L('You pay one-fifth of the amount the insurer accepts. It applies to every claim on this plan.', 'बीमा कंपनी जो राशि स्वीकार करती है, उसका पाँचवाँ हिस्सा आप देंगे। यह इस प्लान के हर क्लेम पर लागू है।'), ref: 'C.6.1', clause: 'Each admissible claim under this Policy shall be subject to a co-payment of 20% of the admissible claim amount, which shall be borne by the Insured Person.', conf: 'high' },
+      { ic: '🛏️', title: L('Room rent limit', 'कमरे के किराए की सीमा'), value: L('₹5,000 a day', '₹5,000 प्रति दिन'), plain: L('In a costlier room, room-linked charges are paid only in proportion. Medicines and tests are not cut.', 'महँगे कमरे में कमरे से जुड़े ख़र्च अनुपात में ही मिलते हैं। दवाइयों और जाँच पर कटौती नहीं होती।'), ref: 'D.6', clause: CL.common.prop.text, conf: 'high' },
+      { ic: '💊', title: L('Pre-existing diseases', 'पहले से मौजूद बीमारियाँ'), value: L('Diabetes and high BP covered since 1 Apr 2025', 'डायबिटीज़ और हाई BP 1 अप्रैल 2025 से कवर'), plain: L('Both were declared when the policy was bought, and the 36-month waiting period is over.', 'दोनों पॉलिसी लेते समय बताए गए थे, और 36 महीने की प्रतीक्षा अवधि पूरी हो चुकी है।'), ref: 'B.2.1', clause: 'Expenses for Pre-existing Diseases declared in the proposal form and accepted by the Company are covered after 36 months of continuous coverage.', conf: 'high' },
+      { ic: '⏰', title: L('Emergency notice', 'इमरजेंसी सूचना'), value: L('Within 24 hours of admission', 'भर्ती के 24 घंटे के अंदर'), plain: L('For an emergency, tell the insurer within 24 hours. ClaimLens can send this now.', 'इमरजेंसी में 24 घंटे के अंदर बीमा कंपनी को बताएँ। ClaimLens अभी भेज सकता है।'), ref: 'E.1.2', clause: 'In the case of emergency Hospitalisation, intimation shall be given to the Company or its TPA within 24 hours of admission or before discharge, whichever is earlier.', conf: 'high' },
+      { ic: '🧾', title: L('Undisclosed conditions and the 5-year rule', 'न बताई गई बीमारी और 5 साल का नियम'), value: L('Claims can be questioned until 1 Apr 2027', '1 अप्रैल 2027 तक क्लेम पर सवाल उठ सकते हैं'), plain: L('Until the policy completes 5 continuous years, the insurer can question a claim if a condition was not disclosed. After that, only proven fraud is a ground.', 'पॉलिसी के लगातार 5 साल पूरे होने तक, अगर कोई बीमारी नहीं बताई गई थी तो बीमा कंपनी क्लेम पर सवाल उठा सकती है। उसके बाद केवल साबित धोखाधड़ी ही आधार है।'), ref: 'F.3', clause: 'Moratorium period: after completion of sixty continuous months of coverage, no policy and claim shall be contestable on grounds of non-disclosure or misrepresentation, except on grounds of established fraud.', conf: 'high' },
+      { ic: '🚫', title: L('Items never paid', 'कभी न मिलने वाले ख़र्च'), value: L('IRDAI standard non-payable list', 'IRDAI की मानक सूची'), plain: L('Attendant bed and food, admission kits and take-home items such as a nebuliser kit are not paid.', 'अटेंडेंट का बिस्तर और खाना, एडमिशन किट और घर ले जाने वाली चीज़ें जैसे नेबुलाइज़र किट नहीं मिलतीं।'), ref: 'Annexure I', clause: CL.common.nonPay.text, conf: 'high' },
+      { ic: '🧓', title: L("Senior citizens' channel", 'वरिष्ठ नागरिक चैनल'), value: L('Dedicated claims and grievance desk', 'क्लेम और शिकायत के लिए अलग डेस्क'), plain: L("Insurers must run a separate channel for senior citizens' claims and grievances. ClaimLens routes your father's case there.", 'बीमा कंपनियों को वरिष्ठ नागरिकों के क्लेम और शिकायतों के लिए अलग चैनल रखना होता है। ClaimLens आपके पिता का केस वहीं भेजता है।'), ref: 'IRDAI 2024-25', clause: 'IRDAI requires all insurers to establish a separate channel to address senior citizens\' health insurance claims and grievances, with details published on the insurer\'s website (IRDAI circular of 30 Jan 2025, referring to the Master Circular on Health Insurance Business, 2024).', conf: 'high' }
+    ],
+    qa: [
+      { q: L('Is pneumonia covered?', 'क्या निमोनिया कवर है?'), a: L('Yes. In-patient treatment for pneumonia is covered. The 20% co-payment applies.', 'हाँ। निमोनिया के लिए भर्ती का इलाज कवर है। 20% को-पेमेंट लागू होगा।'), ref: 'C.6.1', conf: 'high' },
+      { q: L('Dad has had COPD for years. Does that matter?', 'पापा को कई सालों से COPD है। क्या इससे फ़र्क़ पड़ेगा?'), a: L('COPD is not among the conditions declared on the proposal form (diabetes, high BP). If hospital notes mention it, the insurer may ask for records. Keep his old prescriptions and reports ready and do not change any document. Only the insurer decides; a claims expert can guide you.', 'प्रपोज़ल फ़ॉर्म में बताई गई बीमारियों (डायबिटीज़, हाई BP) में COPD नहीं है। अगर अस्पताल के नोट्स में इसका ज़िक्र है, तो बीमा कंपनी रिकॉर्ड माँग सकती है। पुराने पर्चे और रिपोर्ट तैयार रखें और कोई दस्तावेज़ न बदलें। फ़ैसला केवल बीमा कंपनी करेगी; क्लेम विशेषज्ञ मदद कर सकते हैं।'), ref: 'F.3', conf: 'medium' },
+      { q: L('Can I stay with him in the room?', 'क्या मैं उनके साथ कमरे में रुक सकता हूँ?'), a: L('Yes, if the hospital allows. Attendant bed and food are not paid by the policy.', 'हाँ, अगर अस्पताल अनुमति दे। अटेंडेंट का बिस्तर और खाना पॉलिसी से नहीं मिलता।'), ref: 'Annexure I', conf: 'high' },
+      { q: L('Is physiotherapy at home after discharge covered?', 'क्या डिस्चार्ज के बाद घर पर फ़िज़ियोथेरेपी कवर है?'), a: L('Post-hospitalisation costs for the same illness are covered for 60 days, but home physiotherapy is not mentioned. I am not sure, so I will not guess.', 'उसी बीमारी के लिए डिस्चार्ज के बाद 60 दिनों का ख़र्च कवर है, लेकिन घर पर फ़िज़ियोथेरेपी का ज़िक्र नहीं है। मुझे पक्का नहीं पता, इसलिए मैं अंदाज़ा नहीं लगाऊँगा।'), ref: 'C.3.2', conf: 'low' }
+    ],
+    chat: [
+      { bot: [L('Hi Rohan. You are helping Venkatesh Iyer (68). What is happening?', 'नमस्ते रोहन। आप वेंकटेश अय्यर (68) की मदद कर रहे हैं। क्या हुआ है?')], opts: [{ label: L('Emergency admission', 'इमरजेंसी भर्ती') }, { label: L('Planned surgery', 'तय सर्जरी'), alt: true }], voice: L('Dad was admitted this morning with pneumonia', 'पापा आज सुबह निमोनिया की वजह से भर्ती हुए हैं') },
+      { bot: [L('I am sorry to hear that. Which hospital is he in?', 'यह सुनकर दुख हुआ। वे किस अस्पताल में हैं?')], opts: [{ label: L('Lakeview Hospital, Chennai', 'लेकव्यू हॉस्पिटल, चेन्नई') }, { label: L('Another hospital', 'कोई और अस्पताल'), alt: true }] },
+      { bot: [{ card: 'net', text: L('Lakeview Hospital is in the network. Cashless is available.', 'लेकव्यू हॉस्पिटल नेटवर्क में है। कैशलेस उपलब्ध है।') }, L('Emergency admissions must be reported within 24 hours. I have drafted the notice. Send it now?', 'इमरजेंसी भर्ती की सूचना 24 घंटे में देनी होती है। मैंने सूचना तैयार कर दी है। अभी भेजूँ?')], opts: [{ label: L('Send notice now', 'अभी सूचना भेजें'), effect: 'intimate' }, { label: L('Later', 'बाद में'), alt: true }] },
+      { bot: [{ card: 'sent', text: L('Notice sent at 09:05, within 24 hours. Ref INT-26-77310. Routed to the senior citizens\' desk.', 'सूचना 09:05 पर भेजी गई, 24 घंटे के अंदर। संदर्भ INT-26-77310। वरिष्ठ नागरिक डेस्क को भेजी गई।') }, L("Do you have the hospital's estimate?", 'क्या आपके पास अस्पताल का एस्टिमेट है?')], opts: [{ label: L('📎 estimate_lakeview.jpg', '📎 estimate_lakeview.jpg') }, { label: L('Not yet', 'अभी नहीं'), alt: true }] },
+      { bot: [{ card: 'est', text: L('I read the estimate: 5 days, single room at ₹8,000 a day, total ₹1,80,000.', 'मैंने एस्टिमेट पढ़ा: 5 दिन, सिंगल कमरा ₹8,000 प्रति दिन, कुल ₹1,80,000।') }, { card: 'case', text: L('Case CL-26-0533 · emergency · Lakeview Hospital · admitted 31 Oct, 07:30 · cashless · senior citizens\' desk', 'केस CL-26-0533 · इमरजेंसी · लेकव्यू हॉस्पिटल · भर्ती 31 अक्टूबर, 07:30 · कैशलेस · वरिष्ठ नागरिक डेस्क') }, L('Next: what the policy will actually pay.', 'अब देखें: पॉलिसी असल में कितना देगी।')], opts: [] }
+    ],
+    estimate: {
+      hospital: 'Lakeview Hospital, Chennai', roomLabel: L('Single room · ₹8,000/day', 'सिंगल कमरा · ₹8,000/दिन'), roomRate: 8000,
+      altRoom: { label: L('Twin-sharing room · ₹4,500/day', 'ट्विन-शेयरिंग कमरा · ₹4,500/दिन'), rate: 4500 }, defaultVariant: 'main',
+      variants: { main: { label: L('Pneumonia, 5 days', 'निमोनिया, 5 दिन'), days: 5, items: [
+        { id: 'room', label: L('Room (single) · 5 days', 'कमरा (सिंगल) · 5 दिन'), amount: 40000, kind: 'room' },
+        { id: 'nurse', label: L('Nursing care', 'नर्सिंग'), amount: 7500, kind: 'nursing' },
+        { id: 'fees', label: L('Physician & specialist visits', 'डॉक्टर और विशेषज्ञ विज़िट'), amount: 18500, kind: 'fees' },
+        { id: 'pharm', label: L('Medicines & IV antibiotics', 'दवाइयाँ और IV एंटीबायोटिक'), amount: 60000, kind: 'pharmacy' },
+        { id: 'diag', label: L('Lab tests, X-ray & CT', 'लैब जाँच, एक्स-रे और CT'), amount: 28000, kind: 'diagnostics' },
+        { id: 'cons', label: L('Oxygen & medical consumables', 'ऑक्सीजन और मेडिकल सामान'), amount: 17000, kind: 'consumables' },
+        { id: 'np1', label: L('Attendant bed & food', 'अटेंडेंट का बिस्तर और खाना'), amount: 4500, kind: 'np' },
+        { id: 'np2', label: L('Admission kit & toiletries', 'एडमिशन किट और टॉयलेटरी'), amount: 1800, kind: 'np' },
+        { id: 'np3', label: L('Registration & documentation', 'रजिस्ट्रेशन और दस्तावेज़ शुल्क'), amount: 1200, kind: 'np' },
+        { id: 'np4', label: L('Take-home nebuliser kit & spacer', 'घर ले जाने वाली नेबुलाइज़र किट'), amount: 1500, kind: 'np' }] } }
+    },
+    refs: { np: 'Annexure I', prop: 'D.6', copay: 'C.6.1' },
+    flags: r => [
+      { lv: 'likely', ref: 'D.6', conf: 'high', text: L(`The room is above the ₹5,000 a day limit: about ${INR(r.est.prop)} of room-linked charges may be cut. Ask for a room within the limit if his condition allows.`, `कमरा ₹5,000 प्रति दिन की सीमा से ऊपर है: कमरे से जुड़े लगभग ${INR(r.est.prop)} कट सकते हैं। अगर उनकी हालत ठीक हो तो सीमा के अंदर वाला कमरा माँगें।`) },
+      { lv: 'certain', ref: 'C.6.1', conf: 'high', text: L(`20% co-payment: about ${INR(r.est.copay)}.`, `20% को-पेमेंट: लगभग ${INR(r.est.copay)}।`) },
+      { lv: 'certain', ref: 'Annexure I', conf: 'high', text: L(`About ${INR(r.est.np)} of items are on the non-payable list.`, `लगभग ${INR(r.est.np)} की चीज़ें देय-नहीं सूची में हैं।`) },
+      { lv: 'check', ref: 'F.3', conf: 'medium', text: L("Possible question: admission notes say 'known COPD for 6 years', which is not on the proposal form. The insurer may ask for records. Do not alter documents; an expert can guide you.", "संभावित सवाल: भर्ती नोट्स में 'COPD 6 साल से' लिखा है, जो प्रपोज़ल फ़ॉर्म में नहीं है। बीमा कंपनी रिकॉर्ड माँग सकती है। दस्तावेज़ न बदलें; विशेषज्ञ मदद कर सकते हैं।") },
+      { lv: 'ok', ref: 'E.1.2', conf: 'high', text: L('Emergency notice sent within 24 hours.', 'इमरजेंसी सूचना 24 घंटे के अंदर भेजी गई।') }
+    ],
+    questions: [L('Is a room within ₹5,000 a day available and suitable for his condition?', 'क्या ₹5,000 प्रति दिन के अंदर कोई कमरा है जो उनकी हालत के लिए ठीक हो?'), L('Which tests are planned for the next 24 hours, and what will they tell us?', 'अगले 24 घंटों में कौन-सी जाँचें होंगी, और उनसे क्या पता चलेगा?'), L('How many days do you expect him to stay?', 'वे कितने दिन भर्ती रहेंगे?'), L('Can the final bill be ready early on discharge day so approval starts sooner?', 'क्या डिस्चार्ज के दिन अंतिम बिल जल्दी तैयार हो सकता है ताकि मंज़ूरी जल्दी शुरू हो?')],
+    docs: [
+      { name: L('Policy e-card', 'पॉलिसी ई-कार्ड'), pre: 'ok', status: 'ok', check: L('Fetched from your insurer.', 'बीमा कंपनी से लिया गया।') },
+      { name: L("Father's photo ID", 'पिता का फ़ोटो ID'), pre: 'up', status: 'ok', check: L("Readable. 'Venkatesh S. Iyer' vs 'Venkatesh Iyer' on the policy is a minor difference; carry the original.", "साफ़ है। 'Venkatesh S. Iyer' और पॉलिसी के 'Venkatesh Iyer' में मामूली अंतर है; मूल ID साथ रखें।") },
+      { name: L('Your authorisation (consent)', 'आपकी अनुमति (सहमति)'), pre: 'ok', status: 'ok', check: L('Approved by Venkatesh by OTP on 31 Oct.', 'वेंकटेश ने 31 अक्टूबर को OTP से मंज़ूर किया।') },
+      { name: L('Hospital estimate', 'अस्पताल का एस्टिमेट'), pre: 'up', status: 'ok', check: L('Read: 5 days, ₹1,80,000.', 'पढ़ा गया: 5 दिन, ₹1,80,000।') },
+      { name: L('Past records for diabetes and BP', 'डायबिटीज़ और BP के पुराने रिकॉर्ड'), pre: 'up', status: 'ok', check: L('Three prescriptions from 2021 to 2025 found.', '2021 से 2025 के तीन पर्चे मिले।') },
+      { name: L('Earliest records of COPD diagnosis', 'COPD के सबसे पुराने रिकॉर्ड'), pre: 'missing', status: 'warn', check: L('Admission notes mention COPD. Keep the earliest records ready in case the insurer asks.', 'भर्ती नोट्स में COPD का ज़िक्र है। बीमा कंपनी पूछे तो सबसे पुराने रिकॉर्ड तैयार रखें।') },
+      { name: L('Discharge summary & final bill', 'डिस्चार्ज समरी और अंतिम बिल'), pre: 'pending', status: 'pending', check: L('The hospital sends these at discharge.', 'अस्पताल डिस्चार्ज के समय भेजेगा।') }
+    ],
+    intimation: { kind: 'emergency', rule: L('Emergency: within 24 hours of admission (Clause E.1.2).', 'इमरजेंसी: भर्ती के 24 घंटे के अंदर (शर्त E.1.2)।'), ref: 'INT-26-77310', sent: L('Notice sent at 09:05, 1 hour 35 minutes after admission. Ref INT-26-77310.', 'सूचना 09:05 पर भेजी गई, भर्ती के 1 घंटा 35 मिनट बाद। संदर्भ INT-26-77310।') },
+    owner: { name: 'Farah Siddiqui', initials: 'FS', role: L("Senior citizens' claims desk, Your Insurer", 'वरिष्ठ नागरिक क्लेम डेस्क, आपकी बीमा कंपनी') },
+    timeline: [
+      { when: '31 Oct · 07:30', who: 'hospital', ball: 'you', text: L('Admitted as an emergency at Lakeview Hospital.', 'लेकव्यू हॉस्पिटल में इमरजेंसी में भर्ती।') },
+      { when: '31 Oct · 09:05', who: 'you', ball: 'hospital', text: L('Rohan sent the emergency notice through ClaimLens (within 24 hours).', 'रोहन ने ClaimLens से इमरजेंसी सूचना भेजी (24 घंटे के अंदर)।') },
+      { when: '31 Oct · 09:40', who: 'hospital', ball: 'insurer', req: '1h', text: L('Hospital sent a cashless request for ₹1,20,000.', 'अस्पताल ने ₹1,20,000 का कैशलेस अनुरोध भेजा।') },
+      { when: '31 Oct · 10:31', who: 'insurer', ball: 'hospital', tat: { rule: '1h', mins: 51 }, approved: 80000, text: L('Approved ₹80,000 to start.', 'शुरुआत में ₹80,000 मंज़ूर।') },
+      { when: '03 Nov · 18:00', who: 'insurer', ball: 'hospital', approved: 117000, text: L("Approval raised to ₹1,17,000 after the hospital's update.", 'अस्पताल के अपडेट के बाद मंज़ूरी ₹1,17,000 की गई।') },
+      { when: '05 Nov · 10:30', who: 'hospital', ball: 'insurer', req: '3h', text: r => L(`Final bill ${INR(r.final.total)} sent for discharge approval.`, `अंतिम बिल ${INR(r.final.total)} डिस्चार्ज मंज़ूरी के लिए भेजा गया।`) },
+      { when: '05 Nov · 13:30', who: 'insurer', ball: 'insurer', alert: true, tat: { rule: '3h', mins: 180, running: true }, text: L("3 hours have passed and approval is still pending. ClaimLens alerted your case owner and the senior citizens' desk. Under IRDAI rules, extra hospital charges caused by this delay are borne by the insurer, not you.", '3 घंटे हो गए और मंज़ूरी अभी बाक़ी है। ClaimLens ने केस अधिकारी और वरिष्ठ नागरिक डेस्क को सूचित किया। IRDAI नियमों के तहत इस देरी से बढ़े अस्पताल ख़र्च बीमा कंपनी उठाएगी, आप नहीं।') },
+      { when: '05 Nov · 13:52', who: 'insurer', ball: 'you', tat: { rule: '3h', mins: 202 }, approved: r => r.final.payable, text: r => L(`Final approval ${INR(r.final.payable)}. You pay ${INR(r.final.youPay)}.`, `अंतिम मंज़ूरी ${INR(r.final.payable)}। आप ${INR(r.final.youPay)} देंगे।`) },
+      { when: '05 Nov · 14:30', who: 'you', ball: 'closed', text: L('Discharged. A large-text summary in Hindi was sent to Venkatesh. Keep pharmacy bills for 60 days for post-hospitalisation claims.', 'डिस्चार्ज। वेंकटेश को हिंदी में बड़े अक्षरों में सारांश भेजा गया। डिस्चार्ज के बाद के क्लेम के लिए 60 दिन तक दवा के बिल रखें।') }
+    ],
+    final: { variant: 'main', adjust: [{ id: 'pharm', delta: 2400 }] },
+    reconWhy: L('Medicines were ₹2,400 more than estimated; 80% of that was paid after co-payment.', 'दवाइयाँ अनुमान से ₹2,400 ज़्यादा थीं; को-पेमेंट के बाद उसका 80% मिला।'),
+    escalation: { title: L('Discharge approval took over 3 hours', 'डिस्चार्ज मंज़ूरी में 3 घंटे से ज़्यादा लगे'), draft: L(
+      "To: Senior Citizens' Grievance Desk, Your Insurer\nPolicy: SCP-2022-640215 · Claim: CL-26-0533 · Patient: Venkatesh Iyer (68)\nSubject: Discharge approval delayed beyond 3 hours\n\nThe final bill was sent for discharge approval at 10:30 on 5 Nov 2026. Approval came at 13:52, 3 hours 22 minutes later. Please confirm in writing that any additional hospital charges caused by this delay will not be recovered from us, as set out in IRDAI's Master Circular on Health Insurance Business (2024).\n\nRegards,\nRohan Iyer (authorised by the policyholder)",
+      'सेवा में: वरिष्ठ नागरिक शिकायत डेस्क, आपकी बीमा कंपनी\nपॉलिसी: SCP-2022-640215 · क्लेम: CL-26-0533 · मरीज़: वेंकटेश अय्यर (68)\nविषय: डिस्चार्ज मंज़ूरी में 3 घंटे से अधिक देरी\n\nअंतिम बिल 5 नवंबर 2026 को 10:30 बजे डिस्चार्ज मंज़ूरी के लिए भेजा गया था। मंज़ूरी 13:52 बजे, यानी 3 घंटे 22 मिनट बाद मिली। कृपया लिखित पुष्टि करें कि इस देरी से हुए अतिरिक्त अस्पताल ख़र्च की वसूली हमसे नहीं होगी, जैसा IRDAI के स्वास्थ्य बीमा मास्टर सर्कुलर (2024) में है।\n\nसादर,\nरोहन अय्यर (पॉलिसीधारक द्वारा अधिकृत)') }
+  };
+})(window.CL);
+
+</script>
+<script>
+/* Scenario 3: employee under an employer group policy; first call went to HR. Synthetic data. */
+(function (CL) {
+  const L = CL.L, INR = CL.INR;
+  CL.scenarios.group = {
+    key: 'group',
+    label: L('Employee on group cover', 'ग्रुप कवर वाले कर्मचारी'),
+    cover: L('Employer group policy', 'नियोक्ता की ग्रुप पॉलिसी'),
+    user: { first: 'Arjun', full: 'Arjun Mehta', initials: 'AM', line: L('Arjun Mehta, 31 · Gurugram · employee, Acme Software (fictional)', 'अर्जुन मेहता, 31 · गुरुग्राम · कर्मचारी, Acme Software (काल्पनिक)') },
+    intro: L('Arjun (31) is a software engineer in Gurugram, covered by his employer\'s group policy. He was rushed to hospital with appendicitis at 6 am. His first call was to HR, who sent him this link inside the insurer\'s app.',
+      'अर्जुन (31) गुरुग्राम में सॉफ़्टवेयर इंजीनियर हैं और अपनी कंपनी की ग्रुप पॉलिसी में कवर हैं। सुबह 6 बजे अपेंडिसाइटिस के कारण उन्हें अस्पताल ले जाया गया। उन्होंने सबसे पहले HR को फ़ोन किया, जिन्होंने उन्हें बीमा कंपनी के ऐप में यह लिंक भेजा।'),
+    consentExtra: L('HR can see status milestones only if Arjun agrees. HR never sees the diagnosis or bills.', 'HR केवल तभी स्थिति के पड़ाव देख सकता है जब अर्जुन सहमति दें। HR बीमारी या बिल कभी नहीं देखता।'),
+    policy: { product: 'Acme Software group health policy (sample)', number: 'GHP-ACME-2026-0042 · member ACM-20931', docs: L('Group benefit summary (8 pages) + 2 endorsements', 'ग्रुप बेनिफ़िट समरी (8 पेज) + 2 एंडोर्समेंट'), si: 300000, siAvailable: 300000, roomCap: 3000, copay: 0, sublimits: {} },
+    terms: [
+      { ic: '🛏️', title: L('Room rent limit', 'कमरे के किराए की सीमा'), value: L('₹3,000 a day (1% of ₹3 lakh)', '₹3,000 प्रति दिन (₹3 लाख का 1%)'), plain: L('A ₹6,000 room would halve what is paid for room-linked charges such as surgeon and theatre fees.', '₹6,000 का कमरा लेने पर सर्जन और ऑपरेशन थिएटर जैसे कमरे से जुड़े ख़र्च का आधा ही मिलेगा।'), ref: 'GBS 4.2', clause: 'Room rent: up to 1% of the Sum Insured per day for normal rooms and 2% for ICU. Proportionate deduction applies as per Section D.6 of the policy wording.', conf: 'high' },
+      { ic: '✅', title: L('Waiting periods', 'प्रतीक्षा अवधि'), value: L('None: covered from day 1', 'कोई नहीं: पहले दिन से कवर'), plain: L("Your employer's policy waives all waiting periods, including for pre-existing conditions.", 'आपकी कंपनी की पॉलिसी में सभी प्रतीक्षा अवधि माफ़ हैं, पहले से मौजूद बीमारियों के लिए भी।'), ref: 'GBS 3.1', clause: 'The 30-day initial waiting period, pre-existing disease waiting period and specific disease waiting periods are waived for all members.', conf: 'high' },
+      { ic: '👨‍👩‍👦', title: L('Family covered', 'कवर किया गया परिवार'), value: L('You, Kavya (spouse), Ved (son, 3)', 'आप, काव्या (पत्नी), वेद (बेटा, 3)'), plain: L('₹3 lakh is shared by the family (floater). Your parents are not on this policy.', '₹3 लाख पूरे परिवार में साझा है (फ़्लोटर)। आपके माता-पिता इस पॉलिसी में नहीं हैं।'), ref: 'GBS 2.1', clause: 'Family definition: employee, spouse and up to two dependent children. Sum Insured ₹3,00,000 on a family floater basis.', conf: 'high' },
+      { ic: '🤰', title: L('Maternity', 'मैटरनिटी'), value: L('₹50,000 / ₹75,000 from day 1', '₹50,000 / ₹75,000 पहले दिन से'), plain: L('For Kavya, maternity is covered from day 1 with these limits; the newborn is covered from birth.', 'काव्या के लिए मैटरनिटी पहले दिन से इन सीमाओं के साथ कवर है; नवजात जन्म से कवर है।'), ref: 'GBS 5.4', clause: 'Maternity: Normal ₹50,000, Caesarean ₹75,000; 9-month waiting period waived; new born covered from day 1 within the family Sum Insured.', conf: 'high' },
+      { ic: '🛟', title: L('Corporate buffer', 'कॉरपोरेट बफ़र'), value: L('₹20 lakh pool for serious illness', 'गंभीर बीमारी के लिए ₹20 लाख का पूल'), plain: L('If the family sum insured runs out for a listed serious illness, HR can approve extra cover from this pool.', 'सूचीबद्ध गंभीर बीमारी में परिवार की बीमा राशि ख़त्म होने पर HR इस पूल से अतिरिक्त कवर मंज़ूर कर सकता है।'), ref: 'GBS 7.2', clause: "Corporate buffer: ₹20,00,000 aggregate, available for listed critical illnesses after exhaustion of the family Sum Insured, subject to approval by the employer's HR.", conf: 'medium' },
+      { ic: '🚫', title: L('Items never paid', 'कभी न मिलने वाले ख़र्च'), value: L('IRDAI standard non-payable list', 'IRDAI की मानक सूची'), plain: L('Admission kits, attendant food, registration fees and support belts are not paid.', 'एडमिशन किट, अटेंडेंट का खाना, रजिस्ट्रेशन फ़ीस और सपोर्ट बेल्ट नहीं मिलते।'), ref: 'Annexure I', clause: CL.common.nonPay.text, conf: 'high' },
+      { ic: '🔒', title: L('What HR can see', 'HR क्या देख सकता है'), value: L('Status only, with your consent', 'केवल स्थिति, आपकी सहमति से'), plain: L('HR sees milestones such as admitted, approved and discharged. Never your diagnosis or bills.', 'HR केवल भर्ती, मंज़ूरी और डिस्चार्ज जैसे पड़ाव देखता है। आपकी बीमारी या बिल कभी नहीं।'), ref: 'Privacy notice', clause: 'ClaimLens shares claim status milestones with the employer only with the member\'s explicit consent under the Digital Personal Data Protection Act, 2023. Diagnosis, documents and bill details are never shared with the employer.', conf: 'high' }
+    ],
+    qa: [
+      { q: L('Is appendix surgery covered?', 'क्या अपेंडिक्स की सर्जरी कवर है?'), a: L('Yes, from day 1. Your group policy has no waiting periods.', 'हाँ, पहले दिन से। आपकी ग्रुप पॉलिसी में कोई प्रतीक्षा अवधि नहीं है।'), ref: 'GBS 3.1', conf: 'high' },
+      { q: L('Why does my room choice matter?', 'कमरे का चुनाव क्यों मायने रखता है?'), a: L('Your limit is ₹3,000 a day. In a ₹6,000 room, the insurer pays only half of the room-linked charges: about ₹46,000 less on this estimate.', 'आपकी सीमा ₹3,000 प्रति दिन है। ₹6,000 के कमरे में बीमा कंपनी कमरे से जुड़े ख़र्च का आधा ही देगी: इस एस्टिमेट पर लगभग ₹46,000 कम।'), ref: 'GBS 4.2', conf: 'high' },
+      { q: L('Can HR see my medical details?', 'क्या HR मेरी मेडिकल जानकारी देख सकता है?'), a: L('No. With your consent HR sees only status milestones, not your diagnosis or bills.', 'नहीं। आपकी सहमति से HR केवल स्थिति के पड़ाव देखता है, आपकी बीमारी या बिल नहीं।'), ref: 'Privacy notice', conf: 'high' },
+      { q: L('Is robotic surgery covered?', 'क्या रोबोटिक सर्जरी कवर है?'), a: L('Your benefit summary does not mention it and the full policy wording is not attached, so I cannot confirm.', 'आपकी बेनिफ़िट समरी में इसका ज़िक्र नहीं है और पूरी पॉलिसी वर्डिंग साथ नहीं है, इसलिए मैं पुष्टि नहीं कर सकता।'), ref: null, conf: 'low' }
+    ],
+    chat: [
+      { bot: [L('Hi Arjun. HR shared this link with you. What is happening?', 'नमस्ते अर्जुन। HR ने आपको यह लिंक भेजा है। क्या हुआ है?')], opts: [{ label: L('Emergency surgery', 'इमरजेंसी सर्जरी') }, { label: L('Planned treatment', 'तय इलाज'), alt: true }], voice: L('I have been admitted for appendicitis and need surgery', 'मुझे अपेंडिसाइटिस के लिए भर्ती किया गया है और सर्जरी होनी है') },
+      { bot: [L('Which hospital?', 'कौन-सा अस्पताल?')], opts: [{ label: L('CityCare Hospital, Gurugram', 'सिटीकेयर हॉस्पिटल, गुरुग्राम') }, { label: L('Another hospital', 'कोई और अस्पताल'), alt: true }] },
+      { bot: [{ card: 'net', text: L('CityCare Hospital is in network. Cashless is available through HealthBridge TPA (fictional).', 'सिटीकेयर हॉस्पिटल नेटवर्क में है। HealthBridge TPA (काल्पनिक) के ज़रिए कैशलेस उपलब्ध है।') }, L('The emergency notice is due within 24 hours. Send it now?', 'इमरजेंसी सूचना 24 घंटे में देनी है। अभी भेजूँ?')], opts: [{ label: L('Send notice now', 'अभी सूचना भेजें'), effect: 'intimate' }, { label: L('Later', 'बाद में'), alt: true }] },
+      { bot: [{ card: 'sent', text: L('Notice sent at 06:48. Ref INT-26-80044.', 'सूचना 06:48 पर भेजी गई। संदर्भ INT-26-80044।') }, L('Can HR see status updates? Milestones only, never medical details.', 'क्या HR स्थिति के अपडेट देख सकता है? केवल पड़ाव, मेडिकल जानकारी कभी नहीं।')], opts: [{ label: L('Yes, share status with HR', 'हाँ, HR के साथ स्थिति साझा करें'), effect: 'hr' }, { label: L('No', 'नहीं'), alt: true }] },
+      { bot: [L("Do you have the hospital's estimate?", 'क्या आपके पास अस्पताल का एस्टिमेट है?')], opts: [{ label: L('📎 estimate_citycare.jpg', '📎 estimate_citycare.jpg') }, { label: L('Not yet', 'अभी नहीं'), alt: true }] },
+      { bot: [{ card: 'est', text: L('I read the estimate: laparoscopic appendix removal, 3 days, single room at ₹6,000 a day, total ₹1,43,000.', 'मैंने एस्टिमेट पढ़ा: लैप्रोस्कोपिक अपेंडिक्स सर्जरी, 3 दिन, सिंगल कमरा ₹6,000 प्रति दिन, कुल ₹1,43,000।') }, { card: 'case', text: L('Case CL-26-0561 · emergency surgery · CityCare Hospital · cashless via TPA · HR sees status only', 'केस CL-26-0561 · इमरजेंसी सर्जरी · सिटीकेयर हॉस्पिटल · TPA से कैशलेस · HR केवल स्थिति देखता है') }, L('Before surgery, look at the room on the next screen. It changes what you pay.', 'सर्जरी से पहले अगली स्क्रीन पर कमरे वाली बात देखें। इससे आपका ख़र्च बदलता है।')], opts: [] }
+    ],
+    estimate: {
+      hospital: 'CityCare Hospital, Gurugram', roomLabel: L('Single room · ₹6,000/day', 'सिंगल कमरा · ₹6,000/दिन'), roomRate: 6000,
+      altRoom: { label: L('Twin-sharing room · ₹2,800/day', 'ट्विन-शेयरिंग कमरा · ₹2,800/दिन'), rate: 2800 }, defaultVariant: 'main',
+      variants: { main: { label: L('Laparoscopic appendix removal, 3 days', 'लैप्रोस्कोपिक अपेंडिक्स सर्जरी, 3 दिन'), days: 3, items: [
+        { id: 'room', label: L('Room (single) · 3 days', 'कमरा (सिंगल) · 3 दिन'), amount: 18000, kind: 'room' },
+        { id: 'nurse', label: L('Nursing care', 'नर्सिंग'), amount: 4500, kind: 'nursing' },
+        { id: 'fees', label: L('Surgeon & anaesthetist fees', 'सर्जन और एनेस्थेटिस्ट फ़ीस'), amount: 45000, kind: 'fees' },
+        { id: 'ot', label: L('Operation theatre charges', 'ऑपरेशन थिएटर शुल्क'), amount: 25000, kind: 'ot' },
+        { id: 'pharm', label: L('Medicines & IV', 'दवाइयाँ और IV'), amount: 22000, kind: 'pharmacy' },
+        { id: 'diag', label: L('Lab tests & ultrasound', 'लैब जाँच और अल्ट्रासाउंड'), amount: 14000, kind: 'diagnostics' },
+        { id: 'cons', label: L('Medical consumables', 'मेडिकल उपभोग्य सामान'), amount: 9000, kind: 'consumables' },
+        { id: 'np1', label: L('Admission kit & toiletries', 'एडमिशन किट और टॉयलेटरी'), amount: 1500, kind: 'np' },
+        { id: 'np2', label: L('Registration & file charges', 'रजिस्ट्रेशन और फ़ाइल शुल्क'), amount: 1000, kind: 'np' },
+        { id: 'np3', label: L('Attendant food', 'अटेंडेंट का खाना'), amount: 1500, kind: 'np' },
+        { id: 'np4', label: L('Abdominal support belt', 'पेट का सपोर्ट बेल्ट'), amount: 1500, kind: 'np' }] } }
+    },
+    refs: { np: 'Annexure I', prop: 'GBS 4.2' },
+    flags: r => [
+      { lv: 'likely', ref: 'GBS 4.2', conf: 'high', text: L(`The room is double your ₹3,000 a day limit: about ${INR(r.est.prop)} of room-linked charges would be cut. Moving to a twin-sharing room before surgery avoids this.`, `कमरा आपकी ₹3,000 प्रति दिन की सीमा का दोगुना है: कमरे से जुड़े लगभग ${INR(r.est.prop)} कटेंगे। सर्जरी से पहले ट्विन-शेयरिंग कमरे में जाने से यह बचेगा।`) },
+      { lv: 'certain', ref: 'Annexure I', conf: 'high', text: L(`About ${INR(r.est.np)} of items are on the non-payable list.`, `लगभग ${INR(r.est.np)} की चीज़ें देय-नहीं सूची में हैं।`) },
+      { lv: 'ok', ref: 'GBS 3.1', conf: 'high', text: L('No waiting-period or pre-existing disease risks: they are waived on your group policy.', 'प्रतीक्षा अवधि या पुरानी बीमारी का कोई जोखिम नहीं: आपकी ग्रुप पॉलिसी में ये माफ़ हैं।') },
+      { lv: 'check', ref: 'E-card', conf: 'medium', text: L('Your employee ID on the e-card (ACM-20931) does not match HR records (ACM-20913). Ask HR to correct it before discharge.', 'ई-कार्ड पर आपकी कर्मचारी ID (ACM-20931) HR रिकॉर्ड (ACM-20913) से मेल नहीं खाती। डिस्चार्ज से पहले HR से ठीक करवाएँ।') }
+    ],
+    questions: [L('Is a twin-sharing room available now, before surgery?', 'क्या सर्जरी से पहले अभी ट्विन-शेयरिंग कमरा मिल सकता है?'), L('Is the surgery estimate a fixed package?', 'क्या सर्जरी का एस्टिमेट एक तय पैकेज है?'), L('How many days of stay do you expect after surgery?', 'सर्जरी के बाद कितने दिन रुकना होगा?'), L('Can the TPA desk send the final bill early on discharge day?', 'क्या TPA डेस्क डिस्चार्ज के दिन अंतिम बिल जल्दी भेज सकता है?')],
+    docs: [
+      { name: L('Group e-card', 'ग्रुप ई-कार्ड'), pre: 'ok', status: 'ok', check: L('Fetched from the TPA.', 'TPA से लिया गया।') },
+      { name: L('Employee ID card', 'कर्मचारी ID कार्ड'), pre: 'up', status: 'warn', check: L('The e-card shows ACM-20931 but HR records say ACM-20913. Ask HR to correct it.', 'ई-कार्ड पर ACM-20931 है, पर HR रिकॉर्ड में ACM-20913। HR से ठीक करवाएँ।') },
+      { name: L('Photo ID (PAN)', 'फ़ोटो ID (PAN)'), pre: 'up', status: 'ok', check: L('Readable; name matches.', 'साफ़ है; नाम मेल खाता है।') },
+      { name: L('Hospital estimate', 'अस्पताल का एस्टिमेट'), pre: 'up', status: 'ok', check: L('Read: 3 days, ₹1,43,000.', 'पढ़ा गया: 3 दिन, ₹1,43,000।') },
+      { name: L('Consent for HR status view', 'HR को स्थिति दिखाने की सहमति'), pre: 'ok', status: 'ok', check: L('Given at 06:52; milestones only.', '06:52 पर दी गई; केवल पड़ाव।') },
+      { name: L("Doctor's notes & discharge summary", 'डॉक्टर के नोट्स और डिस्चार्ज समरी'), pre: 'pending', status: 'pending', check: L('The hospital sends these to the TPA.', 'अस्पताल इन्हें TPA को भेजेगा।') }
+    ],
+    intimation: { kind: 'emergency', rule: L('Emergency: within 24 hours of admission.', 'इमरजेंसी: भर्ती के 24 घंटे के अंदर।'), ref: 'INT-26-80044', sent: L('Notice sent at 06:48 through HealthBridge TPA. Ref INT-26-80044.', 'सूचना 06:48 पर HealthBridge TPA से भेजी गई। संदर्भ INT-26-80044।') },
+    owner: { name: 'Imran Shaikh', initials: 'IS', role: L('HealthBridge TPA for Your Insurer · HR contact: Kavita (Benefits)', 'HealthBridge TPA (आपकी बीमा कंपनी के लिए) · HR संपर्क: कविता (बेनिफ़िट्स)') },
+    hr: { title: L('What HR (Kavita) sees', 'HR (कविता) क्या देखती हैं'), items: [L('Admitted · CityCare Hospital', 'भर्ती · सिटीकेयर हॉस्पिटल'), L('Cashless approved', 'कैशलेस मंज़ूर'), L('Discharged · claim closed', 'डिस्चार्ज · क्लेम बंद')], note: L('No diagnosis, documents or amounts.', 'कोई बीमारी, दस्तावेज़ या राशि नहीं।') },
+    timeline: [
+      { when: '31 Oct · 06:10', who: 'hospital', ball: 'you', text: L('Admitted as an emergency at CityCare Hospital.', 'सिटीकेयर हॉस्पिटल में इमरजेंसी में भर्ती।') },
+      { when: '31 Oct · 06:40', who: 'hr', ball: 'you', text: L('Arjun called HR. HR shared the ClaimLens link instead of chasing the TPA.', 'अर्जुन ने HR को फ़ोन किया। HR ने TPA के पीछे भागने के बजाय ClaimLens लिंक भेजा।') },
+      { when: '31 Oct · 06:48', who: 'you', ball: 'hospital', text: L('Emergency notice sent through ClaimLens.', 'ClaimLens से इमरजेंसी सूचना भेजी गई।') },
+      { when: '31 Oct · 07:20', who: 'you', ball: 'hospital', text: L('ClaimLens flagged the room limit. Arjun moved to a twin-sharing room (₹2,800 a day) before surgery.', 'ClaimLens ने कमरे की सीमा बताई। अर्जुन सर्जरी से पहले ट्विन-शेयरिंग कमरे (₹2,800 प्रति दिन) में चले गए।') },
+      { when: '31 Oct · 07:35', who: 'hospital', ball: 'tpa', req: '1h', text: L('Hospital sent a cashless request for ₹1,30,000 to the TPA.', 'अस्पताल ने TPA को ₹1,30,000 का कैशलेस अनुरोध भेजा।') },
+      { when: '31 Oct · 08:30', who: 'tpa', ball: 'hospital', tat: { rule: '1h', mins: 55 }, approved: 130000, text: L("Approved ₹1,30,000. HR's view now shows 'Approved'.", "₹1,30,000 मंज़ूर। HR के व्यू में अब 'मंज़ूर' दिखता है।") },
+      { when: '02 Nov · 10:00', who: 'hospital', ball: 'tpa', req: '3h', text: r => L(`Final bill ${INR(r.final.total)} sent for discharge approval.`, `अंतिम बिल ${INR(r.final.total)} डिस्चार्ज मंज़ूरी के लिए भेजा गया।`) },
+      { when: '02 Nov · 11:35', who: 'tpa', ball: 'you', tat: { rule: '3h', mins: 95 }, approved: r => r.final.payable, text: r => L(`Final approval ${INR(r.final.payable)}. You pay ${INR(r.final.youPay)}: only the non-payable items.`, `अंतिम मंज़ूरी ${INR(r.final.payable)}। आप ${INR(r.final.youPay)} देंगे: केवल देय-नहीं चीज़ें।`) },
+      { when: '02 Nov · 12:10', who: 'you', ball: 'closed', text: L("Discharged. HR's view shows 'Discharged'. Claim closed.", "डिस्चार्ज। HR के व्यू में 'डिस्चार्ज' दिखता है। क्लेम बंद।") }
+    ],
+    final: { variant: 'main', roomRate: 2800, adjust: [{ id: 'pharm', delta: 2200 }] },
+    reconWhy: L('He moved to a room within the limit, so nothing was cut in proportion. The single room would have cost him about ₹46,000 more.', 'वे सीमा के अंदर वाले कमरे में चले गए, इसलिए अनुपात में कोई कटौती नहीं हुई। सिंगल कमरे में उन्हें लगभग ₹46,000 ज़्यादा देने पड़ते।'),
+    escalation: { title: L('Correct my employee ID', 'मेरी कर्मचारी ID ठीक करवाएँ'), draft: L(
+      'To: HR Benefits (Kavita) and HealthBridge TPA\nPolicy: GHP-ACME-2026-0042 · Claim: CL-26-0561 · Member: Arjun Mehta\nSubject: Employee ID mismatch on e-card\n\nMy e-card shows employee ID ACM-20931, but HR records show ACM-20913. Please correct the insurer and TPA records so that my claim is not held up.\n\nRegards,\nArjun Mehta',
+      'सेवा में: HR बेनिफ़िट्स (कविता) और HealthBridge TPA\nपॉलिसी: GHP-ACME-2026-0042 · क्लेम: CL-26-0561 · सदस्य: अर्जुन मेहता\nविषय: ई-कार्ड पर कर्मचारी ID में अंतर\n\nमेरे ई-कार्ड पर कर्मचारी ID ACM-20931 है, लेकिन HR रिकॉर्ड में ACM-20913। कृपया बीमा कंपनी और TPA के रिकॉर्ड ठीक करें ताकि मेरा क्लेम न रुके।\n\nसादर,\nअर्जुन मेहता') }
+  };
+})(window.CL);
+
+</script>
+<script>
+/* Scenario 4 (high-severity example): cancer treatment with repeat day-care claims. Retail individual policy. Synthetic data. */
+(function (CL) {
+  const L = CL.L, INR = CL.INR;
+  CL.scenarios.cancer = {
+    key: 'cancer',
+    label: L('Cancer treatment (high severity)', 'कैंसर इलाज (गंभीर)'),
+    cover: L('Retail individual policy', 'रिटेल व्यक्तिगत पॉलिसी'),
+    user: { first: 'Meena', full: 'Meena Joshi', initials: 'MJ', line: L('Meena Joshi, 52 · Jaipur · policyholder and patient', 'मीना जोशी, 52 · जयपुर · पॉलिसीधारक और मरीज़') },
+    intro: L('Meena (52), a teacher in Jaipur, is being treated for breast cancer. Surgery and three chemotherapy cycles are done. Cycle 4, with targeted therapy, is due on 7 Nov. Every cycle is a separate claim, and some of her treatment counts against a special limit.',
+      'मीना (52) जयपुर में शिक्षिका हैं और ब्रेस्ट कैंसर का इलाज करा रही हैं। सर्जरी और कीमोथेरेपी के तीन चक्र हो चुके हैं। टार्गेटेड थेरेपी के साथ चौथा चक्र 7 नवंबर को है। हर चक्र एक अलग क्लेम है, और उनके इलाज का कुछ हिस्सा एक ख़ास सीमा में गिना जाता है।'),
+    consentExtra: null,
+    policy: { product: 'Health Plus (sample)', number: 'HPL-2019-207781', docs: L('Policy wording (71 pages) + schedule', 'पॉलिसी वर्डिंग (71 पेज) + शेड्यूल'), si: 1000000, siTotal: 1100000, siUsed: 480500, siAvailable: 619500, roomCap: null, copay: 0, sublimits: {}, mtLimit: 500000, mtUsed: 126000, mtRemaining: 374000 },
+    terms: [
+      { ic: '💰', title: L('Sum insured left', 'बची बीमा राशि'), value: L('₹6,19,500 of ₹11,00,000', '₹11,00,000 में से ₹6,19,500'), plain: L('Includes a ₹1,00,000 no-claim bonus. Surgery and three cycles have used ₹4,80,500.', 'इसमें ₹1,00,000 का नो-क्लेम बोनस शामिल है। सर्जरी और तीन चक्रों में ₹4,80,500 इस्तेमाल हुए।'), ref: 'Schedule', clause: 'Sum Insured ₹10,00,000; Cumulative Bonus ₹1,00,000; Policy Period 01 Feb 2026 to 31 Jan 2027.', conf: 'high' },
+      { ic: '🧬', title: L('Modern treatments limit', 'मॉडर्न ट्रीटमेंट सीमा'), value: L('50% of sum insured: ₹5,00,000 a year', 'बीमा राशि का 50%: ₹5,00,000 प्रति वर्ष'), plain: L('Targeted therapy given as an injection (a monoclonal antibody) and oral chemotherapy count against this limit. ₹3,74,000 is left this policy year.', 'इंजेक्शन से दी जाने वाली टार्गेटेड थेरेपी (मोनोक्लोनल एंटीबॉडी) और मुँह से ली जाने वाली कीमोथेरेपी इस सीमा में गिनी जाती हैं। इस पॉलिसी वर्ष में ₹3,74,000 बाक़ी हैं।'), ref: 'C.7.2', clause: 'Modern Treatment Methods listed in Annexure III, including Immunotherapy (monoclonal antibody given as injection) and Oral Chemotherapy, are covered up to 50% of the Sum Insured per policy year, as part of In-patient or Day Care Treatment.', conf: 'high' },
+      { ic: '💉', title: L('Day-care chemotherapy', 'डे-केयर कीमोथेरेपी'), value: L('Covered; each cycle is a claim', 'कवर; हर चक्र एक क्लेम'), plain: L('Chemotherapy without an overnight stay is covered as day care. ClaimLens keeps your documents so you do not upload them again each cycle.', 'रात भर रुके बिना कीमोथेरेपी डे-केयर में कवर है। ClaimLens आपके दस्तावेज़ रखता है ताकि हर बार दोबारा अपलोड न करना पड़े।'), ref: 'C.2.1', clause: 'Day Care Treatment: Medical Expenses for Day Care Procedures listed in Annexure II, including chemotherapy and radiotherapy, are covered up to the Sum Insured.', conf: 'high' },
+      { ic: '🔁', title: L('Renewal', 'रिन्यूअल'), value: L('Due 1 Feb 2027: do not let it lapse', '1 फ़रवरी 2027: लैप्स न होने दें'), plain: L('The modern-treatment limit resets each policy year. A lapse would break continuity in the middle of treatment.', 'मॉडर्न ट्रीटमेंट सीमा हर पॉलिसी वर्ष फिर से शुरू होती है। लैप्स होने पर इलाज के बीच निरंतरता टूट जाएगी।'), ref: 'G.2', clause: 'The Policy may be renewed on payment of premium before the end of the Policy Period or within the 30-day grace period. Coverage is not available for the period of any break.', conf: 'high' },
+      { ic: '💼', title: L('Lost income', 'आय का नुकसान'), value: L('Not covered by this policy', 'इस पॉलिसी में कवर नहीं'), plain: L('Health insurance pays hospital bills, not your salary. If you have a critical illness or personal accident policy, it may pay a lump sum. Check its terms.', 'स्वास्थ्य बीमा अस्पताल का बिल देता है, आपकी तनख़्वाह नहीं। अगर आपके पास क्रिटिकल इलनेस या पर्सनल एक्सीडेंट पॉलिसी है, तो वह एकमुश्त राशि दे सकती है। उसकी शर्तें देखें।'), ref: 'Section A', clause: 'Scope of cover: the Company shall indemnify Medical Expenses incurred for Hospitalisation and Day Care Treatment. Loss of income is not covered.', conf: 'high' },
+      { ic: '🚫', title: L('Items never paid', 'कभी न मिलने वाले ख़र्च'), value: L('IRDAI standard non-payable list', 'IRDAI की मानक सूची'), plain: L('Unitemised kits and registration charges are not paid. Usually small for day care.', 'बिना ब्योरे वाली किट और रजिस्ट्रेशन शुल्क नहीं मिलते। डे-केयर में यह आमतौर पर कम होता है।'), ref: 'Annexure I', clause: CL.common.nonPay.text, conf: 'high' }
+    ],
+    qa: [
+      { q: L('Is my targeted therapy covered?', 'क्या मेरी टार्गेटेड थेरेपी कवर है?'), a: L('Yes, as a modern treatment, up to ₹5,00,000 a policy year. ₹3,74,000 is left this year.', 'हाँ, मॉडर्न ट्रीटमेंट के रूप में, ₹5,00,000 प्रति पॉलिसी वर्ष तक। इस साल ₹3,74,000 बाक़ी हैं।'), ref: 'C.7.2', conf: 'high' },
+      { q: L('Will the limit run out before my treatment ends?', 'क्या इलाज ख़त्म होने से पहले सीमा ख़त्म हो जाएगी?'), a: L('If cycles stay 3 weeks apart, cycles 4 to 8 fall before renewal and use about ₹2,10,000, which is within what is left. The limit resets on 1 Feb 2027. This depends on your treatment plan, so confidence is medium.', 'अगर चक्र 3 हफ़्ते के अंतर पर रहे, तो चक्र 4 से 8 रिन्यूअल से पहले होंगे और लगभग ₹2,10,000 लगेंगे, जो बाक़ी राशि के अंदर है। सीमा 1 फ़रवरी 2027 को फिर शुरू होगी। यह आपकी इलाज योजना पर निर्भर है, इसलिए भरोसा मध्यम है।'), ref: 'C.7.2', conf: 'medium' },
+      { q: L('Are cancer tablets taken at home covered?', 'क्या घर पर ली जाने वाली कैंसर की गोलियाँ कवर हैं?'), a: L('Oral chemotherapy is on the modern-treatment list, but the wording ties it to in-patient or day-care treatment. Whether tablets taken at home qualify is unclear, so ask an expert.', 'मुँह से ली जाने वाली कीमोथेरेपी मॉडर्न ट्रीटमेंट सूची में है, पर शर्त इसे भर्ती या डे-केयर इलाज से जोड़ती है। घर पर ली गई गोलियाँ इसमें आती हैं या नहीं, यह साफ़ नहीं है; विशेषज्ञ से पूछें।'), ref: 'C.7.2', conf: 'medium' },
+      { q: L('Will the policy pay for a second opinion abroad?', 'क्या विदेश में सेकंड ओपिनियन का ख़र्च मिलेगा?'), a: L('I could not find this in your policy, so I will not guess.', 'आपकी पॉलिसी में यह नहीं मिला, इसलिए मैं अंदाज़ा नहीं लगाऊँगा।'), ref: null, conf: 'low' }
+    ],
+    chat: [
+      { bot: [L('Hi Meena. Cycle 4 is due on 7 Nov at Hope Cancer Centre. Shall I prepare the claim?', 'नमस्ते मीना। चक्र 4, 7 नवंबर को होप कैंसर सेंटर में है। क्या मैं क्लेम तैयार करूँ?')], opts: [{ label: L('Yes, prepare cycle 4', 'हाँ, चक्र 4 तैयार करें') }, { label: L('Change the date', 'तारीख़ बदलें'), alt: true }], voice: L('Yes, my fourth cycle is on the seventh', 'हाँ, मेरा चौथा चक्र सात तारीख़ को है') },
+      { bot: [{ card: 'net', text: L('Hope Cancer Centre is in network. Day-care cashless is available.', 'होप कैंसर सेंटर नेटवर्क में है। डे-केयर कैशलेस उपलब्ध है।') }, L('Your biopsy report and treatment plan are on file from cycle 1, so there is no need to upload them again. Do you have the cycle 4 estimate?', 'आपकी बायोप्सी रिपोर्ट और इलाज योजना चक्र 1 से हमारे पास है, दोबारा अपलोड की ज़रूरत नहीं। क्या आपके पास चक्र 4 का एस्टिमेट है?')], opts: [{ label: L('📎 cycle4_estimate.jpg', '📎 cycle4_estimate.jpg') }, { label: L('Not yet', 'अभी नहीं'), alt: true }] },
+      { bot: [{ card: 'est', text: L('I read the estimate: day care, chemotherapy ₹30,000 plus targeted therapy ₹42,000, total ₹84,000.', 'मैंने एस्टिमेट पढ़ा: डे-केयर, कीमोथेरेपी ₹30,000 और टार्गेटेड थेरेपी ₹42,000, कुल ₹84,000।') }, { card: 'case', text: L('Case CL-26-0602 · cycle 4 of 6 · Hope Cancer Centre · 7 Nov · day-care cashless', 'केस CL-26-0602 · 6 में से चक्र 4 · होप कैंसर सेंटर · 7 नवंबर · डे-केयर कैशलेस') }, L('Next: what this cycle will cost you, and how much of your limits it uses.', 'अब देखें: इस चक्र में आपका कितना ख़र्च होगा, और यह आपकी सीमाओं का कितना हिस्सा लेगा।')], opts: [] }
+    ],
+    estimate: {
+      hospital: 'Hope Cancer Centre, Jaipur', roomLabel: L('Day-care bed', 'डे-केयर बेड'), roomRate: null, altRoom: null, defaultVariant: 'main',
+      variants: { main: { label: L('Chemotherapy cycle 4 + targeted therapy (day care)', 'कीमोथेरेपी चक्र 4 + टार्गेटेड थेरेपी (डे-केयर)'), days: 1, items: [
+        { id: 'care', label: L('Day-care bed & nursing', 'डे-केयर बेड और नर्सिंग'), amount: 4000, kind: 'nursing' },
+        { id: 'fees', label: L('Oncologist fee', 'ऑन्कोलॉजिस्ट फ़ीस'), amount: 2500, kind: 'fees' },
+        { id: 'chemo', label: L('Chemotherapy drugs', 'कीमोथेरेपी दवाइयाँ'), amount: 30000, kind: 'pharmacy' },
+        { id: 'mab', label: L('Targeted therapy (monoclonal antibody)', 'टार्गेटेड थेरेपी (मोनोक्लोनल एंटीबॉडी)'), amount: 42000, kind: 'pharmacy', mt: true },
+        { id: 'diag', label: L('Blood tests before the cycle', 'चक्र से पहले ख़ून की जाँच'), amount: 3000, kind: 'diagnostics' },
+        { id: 'cons', label: L('Medical consumables', 'मेडिकल उपभोग्य सामान'), amount: 1500, kind: 'consumables' },
+        { id: 'np1', label: L('Chemo care kit (items not itemised)', 'कीमो केयर किट (बिना ब्योरा)'), amount: 800, kind: 'np' },
+        { id: 'np2', label: L('Registration charges', 'रजिस्ट्रेशन शुल्क'), amount: 200, kind: 'np' }] } }
+    },
+    refs: { np: 'Annexure I', mt: 'C.7.2' },
+    flags: r => [
+      { lv: 'certain', ref: 'C.7.2', conf: 'high', text: L(`This cycle uses ${INR(r.est.mtUsed)} of your modern-treatment limit. ${INR(374000 - r.est.mtUsed)} will be left until 31 Jan 2027.`, `यह चक्र आपकी मॉडर्न ट्रीटमेंट सीमा के ${INR(r.est.mtUsed)} इस्तेमाल करेगा। 31 जनवरी 2027 तक ${INR(374000 - r.est.mtUsed)} बचेंगे।`) },
+      { lv: 'check', ref: 'C.7.2', conf: 'medium', text: L('If cycles continue every 3 weeks, the limit should last until renewal. A change in the treatment plan could change this.', 'अगर चक्र हर 3 हफ़्ते में चलते रहे, तो सीमा रिन्यूअल तक चलनी चाहिए। इलाज योजना बदलने पर यह बदल सकता है।') },
+      { lv: 'certain', ref: 'Annexure I', conf: 'high', text: L(`About ${INR(r.est.np)} of items are on the non-payable list.`, `लगभग ${INR(r.est.np)} की चीज़ें देय-नहीं सूची में हैं।`) },
+      { lv: 'check', ref: 'G.2', conf: 'high', text: L('Renewal is due on 1 Feb 2027. A lapse would interrupt cover in the middle of treatment. Reminder set.', 'रिन्यूअल 1 फ़रवरी 2027 को है। लैप्स होने पर इलाज के बीच कवर रुक जाएगा। रिमाइंडर सेट।') },
+      { lv: 'info', ref: 'Section A', conf: 'high', text: L('Your health policy does not replace lost income. Check any critical illness or employer cover you may have.', 'आपकी स्वास्थ्य पॉलिसी आय के नुकसान की भरपाई नहीं करती। अगर कोई क्रिटिकल इलनेस या नियोक्ता कवर है तो देखें।') }
+    ],
+    questions: [L('How many cycles are planned, and how far apart?', 'कितने चक्र तय हैं, और कितने अंतर पर?'), L('Are there equally suitable options that cost less, such as biosimilars?', 'क्या उतने ही उपयुक्त, कम ख़र्च वाले विकल्प हैं, जैसे बायोसिमिलर?'), L("Can each cycle's bill show the targeted therapy as a separate line?", 'क्या हर चक्र के बिल में टार्गेटेड थेरेपी अलग लाइन में दिख सकती है?'), L('If a cycle is delayed, what happens to the plan?', 'अगर कोई चक्र देर से हो, तो योजना पर क्या असर होगा?')],
+    docs: [
+      { name: L('Biopsy (histopathology) report', 'बायोप्सी (हिस्टोपैथोलॉजी) रिपोर्ट'), pre: 'ok', status: 'ok', check: L('On file since cycle 1; reused.', 'चक्र 1 से रिकॉर्ड में; दोबारा इस्तेमाल।') },
+      { name: L("Oncologist's treatment plan", 'ऑन्कोलॉजिस्ट की इलाज योजना'), pre: 'ok', status: 'ok', check: L('On file: 6 chemotherapy cycles; targeted therapy for one year.', 'रिकॉर्ड में: 6 कीमोथेरेपी चक्र; एक साल टार्गेटेड थेरेपी।') },
+      { name: L('Cycle 4 prescription', 'चक्र 4 का पर्चा'), pre: 'up', status: 'ok', check: L('Dated 28 Oct; matches the 7 Nov cycle.', '28 अक्टूबर का; 7 नवंबर के चक्र से मेल खाता है।') },
+      { name: L('Cycle 4 estimate', 'चक्र 4 का एस्टिमेट'), pre: 'up', status: 'ok', check: L('Read: ₹84,000.', 'पढ़ा गया: ₹84,000।') },
+      { name: L('Photo ID & e-card', 'फ़ोटो ID और ई-कार्ड'), pre: 'ok', status: 'ok', check: L('On file.', 'रिकॉर्ड में।') },
+      { name: L('Cycle 3 reimbursement bills', 'चक्र 3 रीइम्बर्समेंट बिल'), pre: 'ok', status: 'ok', check: L('Settled on 24 Oct; nothing pending.', '24 अक्टूबर को सेटल; कुछ बाक़ी नहीं।') }
+    ],
+    intimation: { kind: 'planned', rule: L('Planned day care: tell your insurer at least 48 hours before (Clause E.1.1).', 'तय डे-केयर: कम से कम 48 घंटे पहले बीमा कंपनी को बताएँ (शर्त E.1.1)।'), ref: 'INT-26-91207', sent: L('Notice sent for cycle 4 on 7 Nov. Ref INT-26-91207.', '7 नवंबर के चक्र 4 की सूचना भेजी गई। संदर्भ INT-26-91207।') },
+    owner: { name: 'Sunita Rao', initials: 'SR', role: L('Serious illness care team, Your Insurer', 'गंभीर बीमारी देखभाल टीम, आपकी बीमा कंपनी') },
+    timeline: [
+      { when: 'Aug 2026', who: 'insurer', ball: 'closed', text: L('Claim 1, surgery: settled ₹2,40,000 (cashless).', 'क्लेम 1, सर्जरी: ₹2,40,000 सेटल (कैशलेस)।') },
+      { when: 'Sep 2026', who: 'insurer', ball: 'closed', text: L('Cycles 1 and 2: settled ₹79,000 and ₹80,500 (cashless).', 'चक्र 1 और 2: ₹79,000 और ₹80,500 सेटल (कैशलेस)।') },
+      { when: '06 Oct → 24 Oct', who: 'insurer', ball: 'closed', text: L('Cycle 3: reimbursement claim settled ₹81,000 in 18 days (the cashless desk was closed that Sunday).', 'चक्र 3: रीइम्बर्समेंट क्लेम ₹81,000, 18 दिनों में सेटल (उस रविवार कैशलेस डेस्क बंद था)।') },
+      { when: '07 Nov · 09:10', who: 'hospital', ball: 'insurer', req: '1h', text: L('Cycle 4: hospital sent a day-care cashless request for ₹84,000.', 'चक्र 4: अस्पताल ने ₹84,000 का डे-केयर कैशलेस अनुरोध भेजा।') },
+      { when: '07 Nov · 09:41', who: 'insurer', ball: 'hospital', tat: { rule: '1h', mins: 31 }, approved: 83000, text: L('Approved ₹83,000 (₹1,000 is non-payable).', '₹83,000 मंज़ूर (₹1,000 देय नहीं)।') },
+      { when: '07 Nov · 15:15', who: 'hospital', ball: 'insurer', req: '3h', text: r => L(`Treatment done. Final bill ${INR(r.final.total)} sent.`, `इलाज पूरा। अंतिम बिल ${INR(r.final.total)} भेजा गया।`) },
+      { when: '07 Nov · 16:20', who: 'insurer', ball: 'you', tat: { rule: '3h', mins: 65 }, approved: r => r.final.payable, text: r => L(`Final approval ${INR(r.final.payable)}. You pay ${INR(r.final.youPay)}. Limits updated: ${INR(619500 - r.final.payable)} sum insured and ${INR(374000 - r.final.mtUsed)} modern-treatment limit left.`, `अंतिम मंज़ूरी ${INR(r.final.payable)}। आप ${INR(r.final.youPay)} देंगी। सीमाएँ अपडेट: ${INR(619500 - r.final.payable)} बीमा राशि और ${INR(374000 - r.final.mtUsed)} मॉडर्न ट्रीटमेंट सीमा बाक़ी।`) },
+      { when: '07 Nov · 16:40', who: 'you', ball: 'closed', text: L('Cycle 5 is pre-filled for 28 Nov. Renewal reminder set for 1 Feb 2027.', 'चक्र 5, 28 नवंबर के लिए पहले से तैयार। रिन्यूअल रिमाइंडर 1 फ़रवरी 2027 के लिए सेट।') }
+    ],
+    final: { variant: 'main', adjust: [] },
+    reconWhy: L('The bill matched the estimate exactly.', 'बिल अनुमान से बिल्कुल मेल खाता है।'),
+    escalation: { title: L('Confirm how the modern-treatment limit applies', 'मॉडर्न ट्रीटमेंट सीमा कैसे लागू होती है, पुष्टि करें'), draft: L(
+      'To: Grievance Officer, Your Insurer\nPolicy: HPL-2019-207781 · Claim: CL-26-0602 (cycle 4) · Patient: Meena Joshi\nSubject: Written confirmation of the modern-treatment limit\n\nI am receiving targeted therapy (a monoclonal antibody) every 3 weeks as day care. Please confirm in writing (1) the amount of the modern-treatment limit used so far this policy year, and (2) that the limit resets at renewal on 1 Feb 2027 under Clause C.7.2.\n\nRegards,\nMeena Joshi',
+      'सेवा में: शिकायत अधिकारी, आपकी बीमा कंपनी\nपॉलिसी: HPL-2019-207781 · क्लेम: CL-26-0602 (चक्र 4) · मरीज़: मीना जोशी\nविषय: मॉडर्न ट्रीटमेंट सीमा की लिखित पुष्टि\n\nमुझे हर 3 हफ़्ते डे-केयर में टार्गेटेड थेरेपी (मोनोक्लोनल एंटीबॉडी) दी जा रही है। कृपया लिखित में पुष्टि करें (1) इस पॉलिसी वर्ष में अब तक मॉडर्न ट्रीटमेंट सीमा की कितनी राशि इस्तेमाल हुई है, और (2) शर्त C.7.2 के तहत यह सीमा 1 फ़रवरी 2027 को रिन्यूअल पर फिर शुरू होगी।\n\nसादर,\nमीना जोशी') }
+  };
+})(window.CL);
+
+</script>
+<script>
+/* ClaimLens prototype - app core: state, actions, chat engine, shell rendering. */
+window.CL = window.CL || {};
+(function (CL) {
+  'use strict';
+  const S = CL.state = {};
+  const qs = new URLSearchParams(location.search);
+  const $ = sel => document.querySelector(sel);
+
+  CL.t = x => (x == null ? '' : typeof x === 'string' ? x : (x[S.lang] || x.en));
+  CL.esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  CL.T = x => CL.esc(CL.t(x));
+  CL.sc = () => CL.scenarios[S.scenario];
+  CL.res = () => CL.results(CL.sc(), S.variant);
+  CL.val = (x, r) => (typeof x === 'function' ? x(r || CL.res()) : x);
+
+  function resetScenario() {
+    const sc = CL.sc();
+    Object.assign(S, { step: 0, consent: false, policyRead: false, reading: false, clauses: {}, asked: [], chatIdx: 0, chatLog: [], chatBusy: false, chatDone: false, listening: false, variant: sc.estimate.defaultVariant, whatIf: false, showItems: false, precheck: 'idle', fixed: {}, intimated: false, tlIdx: 0, escalate: false, gSent: false, hrShare: false });
+  }
+
+  /* ---------- chat engine ---------- */
+  function pushBot(i) {
+    const st = CL.sc().chat[i];
+    if (!st) return;
+    st.bot.forEach(m => S.chatLog.push({ from: 'bot', m }));
+    if (!st.opts.length) S.chatDone = true;
+  }
+  CL.mainOpt = () => { const st = CL.sc().chat[S.chatIdx]; return st && st.opts.find(o => !o.alt); };
+  CL.chatStart = () => { if (!S.chatLog.length) pushBot(0); };
+  function applyEffect(opt) { if (!opt) return; if (opt.effect === 'intimate') S.intimated = true; if (opt.effect === 'hr') S.hrShare = true; }
+  CL.chatAnswer = function (label, opt) {
+    if (S.chatBusy || S.chatDone) return;
+    S.chatLog.push({ from: 'user', m: label });
+    applyEffect(opt);
+    S.chatIdx++;
+    if (S.instant) { pushBot(S.chatIdx); CL.render(); return; }
+    S.chatBusy = true; CL.render();
+    setTimeout(() => { S.chatBusy = false; pushBot(S.chatIdx); CL.render(); }, 800);
+  };
+  function completeChat() {
+    CL.chatStart();
+    let guard = 0;
+    while (!S.chatDone && guard++ < 20) { const o = CL.mainOpt(); S.chatLog.push({ from: 'user', m: o.label }); applyEffect(o); S.chatIdx++; pushBot(S.chatIdx); }
+  }
+
+  /* ---------- toast + modal ---------- */
+  let toastTimer;
+  CL.toast = function (msg) {
+    let el = $('#toast');
+    if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+    el.textContent = msg; el.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
+  };
+  CL.modal = function (html) { $('#overlay').innerHTML = html ? `<div class="backdrop" data-a="close"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>` : ''; };
+
+  /* ---------- actions ---------- */
+  const A = CL.actions = {
+    scenario: v => { if (!CL.scenarios[v]) return; S.scenario = v; resetScenario(); CL.render(true); },
+    lang: v => { S.lang = v === 'hi' ? 'hi' : 'en'; CL.render(); },
+    large: () => { S.large = !S.large; CL.render(); },
+    view: v => { S.view = v; CL.render(true); },
+    restart: () => { resetScenario(); CL.render(true); },
+    go: v => { S.step = Math.max(0, Math.min(5, +v)); if (S.step >= 1) S.consent = true; if (S.step === 2) CL.chatStart(); CL.render(true); },
+    next: () => A.go(S.step + 1),
+    back: () => A.go(S.step - 1),
+    consent: () => { S.consent = true; A.go(1); },
+    read: () => {
+      if (S.policyRead || S.reading) return;
+      if (S.instant) { S.policyRead = true; return CL.render(); }
+      S.reading = true; CL.render();
+      setTimeout(() => { S.reading = false; S.policyRead = true; CL.render(); }, 1700);
+    },
+    clause: v => { S.clauses[v] = !S.clauses[v]; CL.render(); },
+    ask: v => { const i = +v; if (!S.asked.includes(i)) S.asked.push(i); CL.render(); },
+    expert: () => CL.modal(`<h3>🧑‍💼 ${CL.T(CL.ui.expertTitle)}</h3><p class="small">${CL.T(CL.ui.expertBody)}</p><p class="xs muted">${CL.esc(CL.sc().owner.name)} · ${CL.T(CL.sc().owner.role)}</p><button class="btn btn-primary btn-block" data-a="close">${CL.T(CL.ui.close)}</button>`),
+    close: (v, el, e) => { if (e && e.target.closest('.modal') && !e.target.closest('[data-a="close"].btn')) return; CL.modal(''); },
+    opt: v => {
+      const st = CL.sc().chat[S.chatIdx]; if (!st) return;
+      const o = st.opts[+v]; if (!o) return;
+      if (o.alt) return CL.toast(CL.t(CL.ui.protoPath));
+      CL.chatAnswer(o.label, o);
+    },
+    send: () => { const inp = $('#chatIn'); if (!inp || !inp.value.trim()) return; const text = inp.value.trim(); inp.value = ''; CL.chatAnswer(text, CL.mainOpt()); },
+    mic: () => {
+      if (S.listening || S.chatBusy || S.chatDone) return;
+      const st = CL.sc().chat[S.chatIdx]; const o = CL.mainOpt();
+      const phrase = '🎙 ' + CL.t(st.voice || o.label);
+      S.listening = true; CL.render();
+      setTimeout(() => { S.listening = false; CL.chatAnswer(phrase, o); }, S.instant ? 0 : 1400);
+    },
+    variant: v => { S.variant = v; CL.render(); },
+    whatif: () => { S.whatIf = !S.whatIf; CL.render(); },
+    items: () => { S.showItems = !S.showItems; CL.render(); },
+    notice: () => { S.intimated = true; CL.toast(CL.t(CL.sc().intimation.sent)); CL.render(); },
+    precheck: () => {
+      if (S.precheck !== 'idle') return;
+      if (S.instant) { S.precheck = 'done'; return CL.render(); }
+      S.precheck = 'running'; CL.render();
+      setTimeout(() => { S.precheck = 'done'; CL.render(); }, 1500);
+    },
+    fix: v => { S.fixed[v] = true; CL.render(); },
+    tl: () => { S.tlIdx = Math.min(CL.sc().timeline.length, S.tlIdx + 1); CL.render(); const sc = $('#screen'); if (sc) sc.scrollTop = sc.scrollHeight; },
+    tlall: () => { S.tlIdx = CL.sc().timeline.length; CL.render(); },
+    esc: () => { S.escalate = !S.escalate; CL.render(); },
+    gsend: () => { S.gSent = true; CL.toast(CL.t(CL.ui.grievanceSent)); CL.render(); },
+    speak: () => {
+      if (!('speechSynthesis' in window)) return CL.toast(CL.t(CL.ui.speakNA));
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(CL.screens.speech());
+      u.lang = S.lang === 'hi' ? 'hi-IN' : 'en-IN'; u.rate = 0.95;
+      const vs = speechSynthesis.getVoices();
+      const v = vs.find(x => x.lang && x.lang.toLowerCase().startsWith(S.lang === 'hi' ? 'hi' : 'en-in')) || vs.find(x => x.lang && x.lang.toLowerCase().startsWith(S.lang === 'hi' ? 'hi' : 'en'));
+      if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    }
+  };
+
+  /* ---------- shell rendering ---------- */
+  CL.render = function (toTop) {
+    const html = document.documentElement;
+    html.classList.toggle('large', S.large);
+    html.lang = S.lang === 'hi' ? 'hi' : 'en';
+    const sc = CL.sc(), ui = CL.ui;
+    $('#topbar').innerHTML = `
+      <div class="logo"><span class="mark">CL</span>ClaimLens <small>prototype</small></div>
+      <div class="tb-group"><span class="tb-label">Scenario</span><select id="scSel" aria-label="Scenario">${CL.order.map(k => `<option value="${k}"${k === S.scenario ? ' selected' : ''}>${CL.T(CL.scenarios[k].label)}</option>`).join('')}</select></div>
+      <div class="seg" role="group" aria-label="View"><button data-a="view" data-v="user" class="${S.view === 'user' ? 'on' : ''}">Policyholder</button><button data-a="view" data-v="insurer" class="${S.view === 'insurer' ? 'on' : ''}">Insurer view</button></div>
+      <span class="spacer"></span>
+      <div class="seg" role="group" aria-label="Language"><button data-a="lang" data-v="en" class="${S.lang === 'en' ? 'on' : ''}">EN</button><button data-a="lang" data-v="hi" class="${S.lang === 'hi' ? 'on' : ''}">हिंदी</button></div>
+      <button class="tb-btn ${S.large ? 'on' : ''}" data-a="large" aria-pressed="${S.large}">Aa ${S.lang === 'hi' ? 'बड़े अक्षर' : 'Large text'}</button>
+      <button class="tb-btn" data-a="speak">🔊 ${S.lang === 'hi' ? 'सुनें' : 'Read aloud'}</button>
+      <button class="tb-btn" data-a="restart">↺ ${S.lang === 'hi' ? 'फिर से' : 'Restart'}</button>`;
+    $('#disc').textContent = CL.t(ui.proto);
+    const insurer = S.view === 'insurer';
+    $('#stage').hidden = insurer; $('#ins').hidden = !insurer;
+    if (insurer) { $('#ins').innerHTML = CL.screens.insurer(); return; }
+    $('#apphead').innerHTML = `<div class="row"><div class="ins-logo">YI</div><div><div class="t1">${CL.T(ui.insurer)} · ${CL.T(ui.claimHelp)}</div><div class="t2">${CL.T(sc.cover)} · ${CL.esc(sc.policy.number)}</div></div><span class="cl">${CL.T(ui.inside)}</span></div>`;
+    $('#steps').innerHTML = ui.steps.map((s, i) => `<button data-a="go" data-v="${i}" class="${i === S.step ? 'on' : ''} ${i < S.step ? 'done' : ''}" aria-current="${i === S.step ? 'step' : 'false'}"><span class="n">${i < S.step ? '✓' : i + 1}</span>${CL.T(s)}</button>`).join('');
+    const scr = $('#screen');
+    const prevTop = scr.scrollTop;
+    scr.innerHTML = CL.screens.step(S.step);
+    if (toTop) scr.scrollTop = 0;
+    else if (S.step === 2) scr.scrollTop = scr.scrollHeight;
+    else scr.scrollTop = prevTop;
+    const canNext = S.step < 5 && (S.step > 0 || S.consent);
+    $('#appfoot').innerHTML = `<button class="btn" data-a="back" ${S.step === 0 ? 'disabled' : ''}>← ${CL.T(ui.back)}</button><button class="btn btn-primary" data-a="next" ${canNext ? '' : 'disabled'}>${CL.T(S.step === 5 ? ui.finish : ui.next)} →</button>`;
+    $('#rail').innerHTML = CL.screens.rail();
+  };
+
+  /* ---------- boot ---------- */
+  function boot() {
+    S.scenario = CL.scenarios[qs.get('scenario')] ? qs.get('scenario') : 'maternity';
+    S.lang = qs.get('lang') === 'hi' ? 'hi' : 'en';
+    S.large = qs.get('large') === '1';
+    S.view = qs.get('view') === 'insurer' ? 'insurer' : 'user';
+    S.instant = qs.get('instant') === '1';
+    if (qs.get('shot') === '1') document.documentElement.classList.add('shot');
+    resetScenario();
+    const step = Math.max(0, Math.min(5, parseInt(qs.get('step') || '0', 10) || 0));
+    if (qs.get('variant') && CL.sc().estimate.variants[qs.get('variant')]) S.variant = qs.get('variant');
+    if (step >= 1) S.consent = true;
+    if (step >= 2 || qs.get('read') === '1') S.policyRead = true;
+    if (step === 2) CL.chatStart();
+    if (qs.get('chat') === 'done') completeChat();
+    if (step >= 3) completeChat();
+    if (step >= 5) { S.precheck = 'done'; S.intimated = true; }
+    if (qs.get('qa')) S.asked = qs.get('qa').split(',').map(Number).filter(n => !isNaN(n));
+    if (qs.get('clause')) S.clauses[qs.get('clause')] = true;
+    if (qs.get('pre') === '1') { S.precheck = 'done'; }
+    if (qs.get('notice') === '1') S.intimated = true;
+    if (qs.get('whatif') === '1') S.whatIf = true;
+    if (qs.get('items') === '1') S.showItems = true;
+    if (qs.get('tl')) S.tlIdx = qs.get('tl') === 'all' ? CL.sc().timeline.length : Math.min(CL.sc().timeline.length, +qs.get('tl') || 0);
+    if (qs.get('esc') === '1') S.escalate = true;
+    if (qs.get('hr') === '1') S.hrShare = true;
+    S.step = step;
+    document.addEventListener('click', e => {
+      const el = e.target.closest('[data-a]');
+      if (!el) return;
+      const fn = A[el.dataset.a];
+      if (fn) fn(el.dataset.v, el, e);
+    });
+    document.addEventListener('change', e => { if (e.target.id === 'scSel') A.scenario(e.target.value); });
+    document.addEventListener('keydown', e => {
+      if (e.target.id === 'chatIn' && e.key === 'Enter') A.send();
+      if (e.key === 'Escape') CL.modal('');
+    });
+    CL.render(true);
+  }
+  CL.boot = boot;
+})(window.CL);
+
+</script>
+<script>
+/* ClaimLens prototype - screens part 1: Start, Your cover, Tell us, What's paid. */
+(function (CL) {
+  'use strict';
+  const S = CL.state, ui = CL.ui, T = CL.T, esc = CL.esc, INR = CL.INR, L = CL.L;
+  const screens = CL.screens = CL.screens || {};
+  const conf = c => `<span class="chip c-${c}">${c === 'high' ? '●' : c === 'medium' ? '◐' : '○'} ${T(ui.conf[c])}</span>`;
+  const ref = r => (r ? `<span class="ref">§ ${esc(r)}</span>` : '');
+  screens.conf = conf; screens.ref = ref;
+
+  const local = {
+    hi: L('Hi', 'नमस्ते'),
+    plan: L('What ClaimLens will do for you', 'ClaimLens आपके लिए क्या करेगा'),
+    planItems: [L('📖 Explain your cover in plain words, with the clause behind each answer', '📖 आपका कवर आसान शब्दों में समझाएगा, हर जवाब के पीछे की शर्त के साथ'), L('💬 Create your case from a short chat, in English or Hindi', '💬 छोटी बातचीत से आपका केस बनाएगा, अंग्रेज़ी या हिंदी में'), L('🧮 Show what will actually be paid, and what you will pay', '🧮 दिखाएगा कि असल में कितना मिलेगा और आपको कितना देना होगा'), L('📋 Pre-check documents before the insurer sees them', '📋 बीमा कंपनी से पहले दस्तावेज़ जाँचेगा'), L('📍 Track the claim in one place, with one case owner', '📍 एक जगह क्लेम ट्रैक करेगा, एक केस अधिकारी के साथ')],
+    readyToRead: L('Ready to read', 'पढ़ने के लिए तैयार'),
+    of: L('of', 'में से'),
+    est: L('Estimate', 'अनुमान'), np: L('Not payable', 'देय नहीं'), room: L('Room cut', 'कमरा कटौती'), lim: L('Over limit', 'सीमा से ऊपर'), cop: L('Co-pay', 'को-पेमेंट'),
+    sameNote: L('Your payout stays the same because the treatment limit is reached first. The cheaper room only lowers your total bill.', 'आपका भुगतान वही रहेगा क्योंकि इलाज की सीमा पहले पूरी हो जाती है। सस्ता कमरा केवल आपका कुल बिल कम करता है।'),
+    save: L('You save', 'आपकी बचत'),
+    ifRoom: L('With a', 'अगर'),
+    item: L('Item', 'मद'), amount: L('Amount', 'राशि'), status: L('Status', 'स्थिति'),
+    limits: L('Your limits after this claim', 'इस क्लेम के बाद आपकी सीमाएँ'),
+    siLeft: L('Sum insured left', 'बची बीमा राशि'), mtLeft: L('Modern-treatment limit left', 'बची मॉडर्न ट्रीटमेंट सीमा'),
+    now: L('now', 'अभी'), after: L('after this cycle', 'इस चक्र के बाद')
+  };
+
+  /* ---------- 0. Start ---------- */
+  screens.s0 = function () {
+    const sc = CL.sc();
+    return `
+    <div class="card hero">
+      <div class="row"><div class="avatar">${esc(sc.user.initials)}</div><div><b>${T(local.hi)} ${esc(sc.user.first)}</b><div class="small muted">${T(sc.user.line)}</div></div></div>
+      <p class="small" style="margin:10px 0 0">${T(sc.intro)}</p>
+      <div class="pill-note">${T(sc.cover)} · ${esc(sc.policy.product)}</div>
+    </div>
+    <div class="card consent">
+      <h4>🔐 ${T(ui.consentTitle)}</h4>
+      <p class="small">${T(ui.consentBody)}</p>
+      ${sc.consentExtra ? `<p class="small"><b>👪</b> ${T(sc.consentExtra)}</p>` : ''}
+      ${S.consent ? `<span class="chip c-high">✓ ${T(ui.agreed)}</span>` : `<button class="btn btn-primary btn-block" data-a="consent">${T(ui.agree)}</button>`}
+    </div>
+    <div class="card"><h4>${T(local.plan)}</h4>${local.planItems.map(x => `<p class="small">${T(x)}</p>`).join('')}</div>`;
+  };
+
+  /* ---------- 1. Your cover (AI reads the policy) ---------- */
+  screens.s1 = function () {
+    const sc = CL.sc();
+    let head = `<div class="card"><div class="row between"><div><h4>📄 ${T(sc.policy.docs)}</h4><div class="xs muted">${esc(sc.policy.product)} · ${esc(sc.policy.number)}</div></div>`;
+    if (S.policyRead) head += `<span class="chip c-high">✓ ${sc.terms.length}</span></div><p class="small muted">${sc.terms.length} ${T(ui.found)}</p></div>`;
+    else if (S.reading) head += `</div><p class="small">${T(ui.reading)}</p><div class="reading"><i></i></div></div>`;
+    else head += `</div><p class="small muted">${T(local.readyToRead)}</p><button class="btn btn-primary btn-block" data-a="read">✨ ${T(ui.readPolicy)}</button></div>`;
+    if (!S.policyRead) return head;
+    const terms = sc.terms.map((tm, i) => `
+      <div class="card"><div class="term"><div class="ic">${tm.ic}</div><div>
+        <div class="row between wrap"><b>${T(tm.title)}</b>${conf(tm.conf)}</div>
+        <div class="val">${T(tm.value)}</div>
+        <p class="small">${T(tm.plain)}</p>
+        <div class="row wrap">${ref(tm.ref)}<button class="btn-link" data-a="clause" data-v="${i}">${T(S.clauses[i] ? ui.hideClause : ui.showClause)}</button></div>
+        ${S.clauses[i] ? `<div class="clause">“${esc(tm.clause)}”</div>` : ''}
+      </div></div></div>`).join('');
+    const chips = sc.qa.map((q, i) => `<button class="qchip ${S.asked.includes(i) ? 'used' : ''}" data-a="ask" data-v="${i}">${T(q.q)}</button>`).join('');
+    const answers = S.asked.map(i => { const q = sc.qa[i]; return `
+      <div class="card qa"><div class="q">❓ ${T(q.q)}</div><p class="small">${T(q.a)}</p>
+        <div class="row wrap">${conf(q.conf)}${ref(q.ref)}${q.conf !== 'high' ? `<button class="btn-link" data-a="expert">🧑‍💼 ${T(ui.askExpert)}</button>` : ''}</div>
+        ${q.conf === 'low' ? `<p class="xs muted">${T(ui.lowNote)}</p>` : ''}</div>`; }).join('');
+    return head + terms + `<div class="sec-title">${T(ui.askTitle)}</div><div class="qchips">${chips}</div><div style="margin-top:10px">${answers}</div>`;
+  };
+
+  /* ---------- 2. Tell us (conversational case creation) ---------- */
+  function msgHtml(entry) {
+    const m = entry.m;
+    if (entry.from === 'user') return `<div class="msg user">${T(m)}</div>`;
+    if (m && m.card) {
+      const icon = { net: '✅', est: '🧾', case: '🗂️', sent: '📨' }[m.card];
+      const cls = m.card === 'case' ? 'case-msg' : 'card-msg';
+      return `<div class="msg bot ${cls}">${icon} ${T(m.text)}</div>`;
+    }
+    return `<div class="msg bot">${T(m)}</div>`;
+  }
+  screens.s2 = function () {
+    CL.chatStart();
+    const sc = CL.sc();
+    const st = sc.chat[S.chatIdx];
+    let html = `<div class="chat" aria-live="polite">${S.chatLog.map(msgHtml).join('')}`;
+    if (S.chatBusy) html += `<div class="typing">${T(ui.typing)}</div>`;
+    if (S.listening) html += `<div class="typing">🎙 ${T(ui.listening)}</div>`;
+    html += '</div>';
+    if (!S.chatDone && st && !S.chatBusy) {
+      html += `<div class="opts">${st.opts.map((o, i) => `<button class="opt ${o.alt ? 'alt' : ''}" data-a="opt" data-v="${i}">${T(o.label)}</button>`).join('')}</div>
+      <div class="composer"><input id="chatIn" type="text" placeholder="${T(ui.typeHere)}" aria-label="${T(ui.typeHere)}"><button class="mic ${S.listening ? 'on' : ''}" data-a="mic" aria-label="Speak">🎙</button><button class="btn btn-primary" data-a="send" aria-label="Send">➤</button></div>`;
+    }
+    if (S.chatDone) html += `<button class="btn btn-primary btn-block" style="margin-top:12px" data-a="go" data-v="3">${T(ui.seePaid)} →</button>`;
+    return html;
+  };
+
+  /* ---------- 3. What will actually be paid ---------- */
+  function seg(cls, amt, total) { return amt > 0 ? `<span class="${cls}" style="width:${(amt / total * 100).toFixed(2)}%"></span>` : ''; }
+  screens.s3 = function () {
+    const sc = CL.sc(), e = sc.estimate, r = CL.res(), x = r.est, refs = sc.refs || {};
+    const variants = Object.keys(e.variants);
+    let html = `<div class="card"><div class="row between wrap"><div><h4>🏥 ${esc(e.hospital)}</h4><div class="xs muted">${T(e.variants[S.variant].label)} · ${T(e.roomLabel)}</div></div><span class="chip c-info">${T(ui.estimate)}</span></div></div>`;
+    if (variants.length > 1) html += `<div class="variant">${variants.map(k => `<button data-a="variant" data-v="${k}" class="${k === S.variant ? 'on' : ''}">${T(e.variants[k].label)}</button>`).join('')}</div>`;
+    html += `<div class="card"><div class="nums"><div><div class="k">${T(ui.estimate)}</div><div class="v">${INR(x.total)}</div></div><div><div class="k">${T(ui.insurerPays)}</div><div class="v pay">${INR(x.payable)}</div></div><div><div class="k">${T(ui.youPay)}</div><div class="v you">${INR(x.youPay)}</div></div></div>
+      <div class="bar" role="img" aria-label="Breakdown">${seg('s-paid', x.payable, x.total)}${seg('s-np', x.np, x.total)}${seg('s-prop', x.prop, x.total)}${seg('s-sub', x.sub, x.total)}${seg('s-mt', x.mt, x.total)}${seg('s-copay', x.copay, x.total)}${seg('s-si', x.si, x.total)}</div>
+      <div class="legend"><span><i class="s-paid"></i>${T(ui.paid)}</span>${x.np ? `<span><i class="s-np"></i>${T(local.np)}</span>` : ''}${x.prop ? `<span><i class="s-prop"></i>${T(local.room)}</span>` : ''}${x.sub || x.mt ? `<span><i class="s-sub"></i>${T(local.lim)}</span>` : ''}${x.copay ? `<span><i class="s-copay"></i>${T(local.cop)}</span>` : ''}</div></div>`;
+    const rows = [
+      ['s-np', ui.r_np, x.np, refs.np], ['s-prop', ui.r_prop, x.prop, refs.prop], ['s-sub', ui.r_sub, x.sub, refs.sub],
+      ['s-mt', ui.r_mt, x.mt, refs.mt], ['s-copay', ui.r_copay, x.copay, refs.copay], ['s-si', ui.r_si, x.si, null]
+    ].filter(rw => rw[2] > 0);
+    html += `<div class="card"><h4>${T(ui.whyGap)}</h4>${rows.map(rw => `<div class="why"><span class="sw ${rw[0]}"></span><div>${T(rw[1])} ${ref(rw[3])}</div><span class="amt">${INR(rw[2])}</span></div>`).join('')}
+      <div class="why"><span class="sw" style="background:#16202B"></span><div><b>${T(ui.youPay)}</b></div><span class="amt">${INR(x.youPay)}</span></div></div>`;
+    if (r.alt && x.rate && sc.policy.roomCap && x.rate > sc.policy.roomCap) {
+      const a = r.alt, saving = x.youPay - a.youPay;
+      html += `<div class="card whatif"><div class="row between"><b>💡 ${T(ui.whatIf)}</b><button class="btn-link" data-a="whatif">${S.whatIf ? '−' : '+'}</button></div>
+        ${S.whatIf ? `<p class="small">${T(local.ifRoom)} ${T(e.altRoom.label)}: ${T(ui.insurerPays)} <b>${INR(a.payable)}</b>, ${T(ui.youPay)} <b>${INR(a.youPay)}</b>.</p>
+        <p class="small"><span class="chip c-high">${T(local.save)} ${INR(saving)}</span></p>${a.payable === x.payable ? `<p class="xs muted">${T(local.sameNote)}</p>` : ''}` : ''}</div>`;
+    }
+    if (sc.policy.mtLimit) {
+      const siNow = sc.policy.siAvailable, siAfter = siNow - x.payable, mtNow = sc.policy.mtRemaining, mtAfter = mtNow - x.mtUsed;
+      html += `<div class="card"><h4>${T(local.limits)}</h4>
+        <div class="small">${T(local.siLeft)}: <b>${INR(siAfter)}</b> <span class="xs muted">(${T(local.now)} ${INR(siNow)} ${T(local.of)} ${INR(sc.policy.siTotal)})</span></div><div class="meter"><i style="width:${(siAfter / sc.policy.siTotal * 100).toFixed(1)}%"></i></div>
+        <div class="small">${T(local.mtLeft)}: <b>${INR(mtAfter)}</b> <span class="xs muted">(${T(local.now)} ${INR(mtNow)} ${T(local.of)} ${INR(sc.policy.mtLimit)})</span></div><div class="meter"><i style="width:${(mtAfter / sc.policy.mtLimit * 100).toFixed(1)}%"></i></div></div>`;
+    }
+    html += `<div class="card"><div class="row between"><b>🧾 ${T(e.variants[S.variant].label)}</b><button class="btn-link" data-a="items">${T(S.showItems ? ui.hideItems : ui.showItems)}</button></div>
+      ${S.showItems ? `<table class="items"><tbody>${x.items.map(it => `<tr><td>${T(it.label)}</td><td class="r">${INR(it.amount)}</td><td class="r"><span class="chip ${it.status === 'np' ? 'c-np' : it.status === 'reduced' ? 'c-medium' : 'c-high'}">${T(ui.st[it.status])}${it.status === 'reduced' ? ' ×' + x.ratio.toFixed(2) : ''}</span></td></tr>`).join('')}</tbody></table>` : ''}</div>`;
+    const icon = { certain: '🔴', likely: '🟠', check: '🟡', ok: '🟢', info: 'ℹ️' };
+    html += `<div class="card"><h4>${T(ui.risks)}</h4>${sc.flags(r).map(f => `<div class="flag"><span class="fi">${icon[f.lv]}</span><div>${T(f.text)}<div class="row wrap" style="margin-top:3px">${ref(f.ref)}${conf(f.conf)}</div></div></div>`).join('')}</div>`;
+    html += `<div class="card"><h4>❔ ${T(ui.askHosp)}</h4><ul class="qs">${sc.questions.map(q => `<li>${T(q)}</li>`).join('')}</ul></div>`;
+    html += `<div class="note">⚖️ ${T(ui.notDecision)} <button class="btn-link" data-a="expert">${T(ui.askExpert)}</button></div>`;
+    return html;
+  };
+})(window.CL);
+
+</script>
+<script>
+/* ClaimLens prototype - screens part 2: Prepare, Track, Insurer view, presenter rail, read-aloud text. */
+(function (CL) {
+  'use strict';
+  const S = CL.state, ui = CL.ui, T = CL.T, esc = CL.esc, INR = CL.INR, L = CL.L;
+  const screens = CL.screens;
+  const fmtM = m => (m < 60 ? `${m} min` : `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`);
+  const local = {
+    readiness: L('Readiness', 'तैयारी'),
+    waiting: L('Clock running', 'घड़ी चल रही है'),
+    within: L('within limit', 'सीमा के अंदर'), over: L('over the limit', 'सीमा से ऊपर'), pending: L('still pending', 'अभी बाक़ी'),
+    estSaid: L('ClaimLens estimate: you pay', 'ClaimLens अनुमान: आप देंगे'), finalSaid: L('Final: you pay', 'अंतिम: आप देंगे'),
+    hospNote: L('The hospital sends these directly to the insurer or TPA.', 'अस्पताल इन्हें सीधे बीमा कंपनी या TPA को भेजता है।'),
+    noEvents: L('Updates appear here as the hospital, TPA and insurer act.', 'अस्पताल, TPA और बीमा कंपनी के काम करते ही अपडेट यहाँ दिखेंगे।')
+  };
+
+  /* ---------- 4. Prepare ---------- */
+  screens.s4 = function () {
+    const sc = CL.sc(), im = sc.intimation;
+    let html = `<div class="card"><h4>📨 ${T(ui.tellInsurer)}</h4><p class="small">${T(im.rule)}</p>
+      ${S.intimated ? `<span class="chip c-high">✓ ${T(ui.noticeSent)} · ${esc(im.ref)}</span><p class="xs muted" style="margin-top:6px">${T(im.sent)}</p>` : `<button class="btn btn-primary btn-block" data-a="notice">${T(ui.sendNotice)}</button>`}</div>`;
+    const done = S.precheck === 'done';
+    const statusOf = (d, i) => (done ? (d.status === 'warn' && S.fixed[i] ? 'ok' : d.status) : (d.pre === 'up' ? 'up' : d.pre));
+    const chipCls = { ok: 'c-high', warn: 'c-medium', missing: 'c-low', pending: 'c-info', up: 'c-np' };
+    const icon = { ok: '✅', warn: '⚠️', missing: '⛔', pending: '🏥', up: '📎' };
+    const sts = sc.docs.map(statusOf);
+    html += `<div class="card"><div class="row between"><h4>📋 ${T(ui.docs)}</h4>${done ? `<div class="ready"><span class="chip c-high">${sts.filter(s => s === 'ok').length} ${T(ui.readyLbl)}</span><span class="chip c-medium">${sts.filter(s => s === 'warn' || s === 'missing').length} ${T(ui.fixLbl)}</span><span class="chip c-info">${sts.filter(s => s === 'pending').length} ${T(ui.hospLbl)}</span></div>` : ''}</div>`;
+    if (S.precheck === 'idle') html += `<button class="btn btn-soft btn-block" style="margin:6px 0" data-a="precheck">🔍 ${T(ui.runCheck)}</button>`;
+    if (S.precheck === 'running') html += `<p class="small">${T(ui.checking)}</p><div class="scan"><i></i></div>`;
+    html += sc.docs.map((d, i) => { const s = sts[i]; return `<div class="doc"><span class="di">${icon[s]}</span><div><div class="dn">${T(d.name)}</div>${done || s === 'pending' ? `<div class="dc">${T(d.check)}</div>` : ''}${done && d.status === 'warn' && !S.fixed[i] ? `<button class="btn-link" data-a="fix" data-v="${i}">✓ ${T(ui.markFixed)}</button>` : ''}</div><span class="chip ${chipCls[s]}">${T(ui.dstat[s])}</span></div>`; }).join('');
+    html += `</div><div class="note">🛡️ ${T(L('ClaimLens only flags issues. It never edits, creates or alters a document.', 'ClaimLens केवल समस्याएँ बताता है। यह कभी कोई दस्तावेज़ बदलता, बनाता या संपादित नहीं करता।'))}</div>`;
+    return html;
+  };
+
+  /* ---------- 5. Track ---------- */
+  function clock(rule, evs) {
+    let st = null;
+    evs.forEach(ev => { if (ev.req === rule) st = { pending: true }; if (ev.tat && ev.tat.rule === rule) st = { mins: ev.tat.mins, running: !!ev.tat.running }; });
+    const lim = rule === '1h' ? 60 : 180, label = rule === '1h' ? ui.rule1h : ui.rule3h;
+    if (!st) return `<div class="clock"><div class="xs muted">${T(label)}</div><div class="cv">—</div><div class="xs muted">${T(ui.notYet)}</div></div>`;
+    if (st.pending) return `<div class="clock"><div class="xs muted">${T(label)}</div><div class="cv">⏱</div><div class="xs muted">${T(local.waiting)}</div></div>`;
+    const bad = st.running || st.mins > lim;
+    return `<div class="clock ${bad ? 'bad' : 'ok'}"><div class="xs muted">${T(label)}</div><div class="cv">${fmtM(st.mins)} ${bad ? '✗' : '✓'}</div><div class="xs">${T(st.running ? local.pending : bad ? local.over : local.within)}</div></div>`;
+  }
+  screens.s5 = function () {
+    const sc = CL.sc(), r = CL.res(), tl = sc.timeline, evs = tl.slice(0, S.tlIdx);
+    const last = evs[evs.length - 1];
+    const ball = last ? last.ball : 'you';
+    let html = `<div class="card"><div class="owner"><div class="avatar">${esc(sc.owner.initials)}</div><div><div class="xs muted">${T(ui.caseOwner)}</div><b>${esc(sc.owner.name)}</b><div class="xs muted">${T(sc.owner.role)}</div></div></div>
+      <div class="row between" style="margin-top:10px"><span class="small">${T(ui.whoNow)}</span><span class="ball">● ${T(ui.who[ball])}</span></div></div>`;
+    html += `<div class="clocks">${clock('1h', evs)}${clock('3h', evs)}</div>`;
+    const apprEv = evs.filter(ev => ev.approved != null).pop();
+    if (apprEv) {
+      const appr = CL.val(apprEv.approved, r), exp = r.expected.payable;
+      html += `<div class="card" style="margin-top:11px"><div class="row between"><span class="small">${T(ui.approvedSoFar)}</span><b>${INR(appr)}</b></div><div class="row between"><span class="small">${T(ui.expected)}</span><b>${INR(exp)}</b></div>
+        <p class="xs ${appr < exp ? '' : 'muted'}" style="margin-top:4px">${appr < exp ? `⚠️ ${INR(exp - appr)} ${T(ui.belowExp)}` : `✓ ${T(ui.matchesExp)}`}</p></div>`;
+    }
+    html += `<div class="card" style="margin-top:11px"><div class="tl">${evs.length ? evs.map((ev, i) => `<div class="ev ${ev.alert ? 'alert' : ''} ${i === evs.length - 1 ? 'new' : ''}"><span class="dot"></span><div class="when">${esc(ev.when)}<span class="who">${T(ui.who[ev.who])}</span></div><div class="what">${T(CL.val(ev.text, r))}</div></div>`).join('') : `<p class="small muted">${T(local.noEvents)}</p>`}</div>
+      ${S.tlIdx < tl.length ? `<div class="row"><button class="btn btn-primary grow" data-a="tl">▶ ${T(ui.nextUpdate)} (${S.tlIdx}/${tl.length})</button><button class="btn" data-a="tlall">${T(ui.showAll)}</button></div>` : ''}</div>`;
+    if (S.tlIdx >= tl.length) {
+      const diff = r.final.youPay - r.finEstimate.youPay;
+      html += `<div class="card recon"><h4>🧮 ${T(ui.recon)}</h4><div class="row between small"><span>${T(local.estSaid)}</span><b>${INR(r.finEstimate.youPay)}</b></div><div class="row between small"><span>${T(local.finalSaid)}</span><b>${INR(r.final.youPay)}</b></div>
+        <p class="xs muted" style="margin-top:4px">${diff === 0 ? '=' : diff > 0 ? '+' + INR(diff) : '−' + INR(-diff)} · ${T(sc.reconWhy)}</p></div>`;
+      if (sc.hr && S.hrShare) html += `<div class="card hr-view"><h4>👩‍💼 ${T(sc.hr.title)}</h4>${sc.hr.items.map(x => `<p class="small">✓ ${T(x)}</p>`).join('')}<p class="xs muted">🔒 ${T(sc.hr.note)}</p></div>`;
+      html += `<div class="card"><div class="row between"><h4>📝 ${T(ui.raise)}</h4><button class="btn-link" data-a="esc">${S.escalate ? '−' : '+'}</button></div><p class="small muted">${T(sc.escalation.title)}</p>
+        ${S.escalate ? `<textarea class="draft" aria-label="Draft">${T(sc.escalation.draft)}</textarea><p class="xs muted">${T(ui.draftNote)}</p>
+        <div class="path">${ui.path.map((p, i) => `<div><b>${i + 1}</b><span>${T(p)}</span></div>`).join('')}</div>
+        <div style="margin-top:10px">${S.gSent ? `<span class="chip c-high">✓ ${T(ui.grievanceSent)}</span>` : `<button class="btn btn-primary btn-block" data-a="gsend">${T(ui.sendGrievance)}</button>`}</div>` : ''}</div>
+        <div class="card hero"><b>🎉 ${T(ui.done)}</b><p class="small muted">${T(L('You knew what you would pay before the bill, and you could see who had your claim at every step.', 'बिल से पहले आपको पता था कि आपको कितना देना है, और हर कदम पर दिखता रहा कि आपका क्लेम किसके पास है।'))}</p></div>`;
+    }
+    return html;
+  };
+
+  screens.step = n => screens['s' + n]();
+
+  /* ---------- Insurer view (the buyer) ---------- */
+  screens.insurer = function () {
+    const rows = CL.order.map(k => {
+      const sc = CL.scenarios[k], r = CL.results(sc);
+      const t1 = sc.timeline.filter(ev => ev.tat && ev.tat.rule === '1h').map(ev => ev.tat.mins);
+      const t3 = sc.timeline.filter(ev => ev.tat && ev.tat.rule === '3h' && !ev.tat.running).map(ev => ev.tat.mins).pop();
+      const warns = sc.docs.filter(d => d.status === 'warn').length;
+      return { k, sc, r, t1, t3, warns };
+    });
+    const all1 = rows.flatMap(x => x.t1), ok1 = all1.filter(m => m <= 60).length;
+    const ok3 = rows.filter(x => x.t3 <= 180).length;
+    const caught = rows.reduce((s, x) => s + x.warns, 0);
+    const review = {
+      maternity: ['Doctor registration number missing on admission advice: fixed before admission', 'Name mismatch on antenatal card: patient told to carry ID'],
+      older: ['Possible undisclosed COPD: routed to medical team for review (ClaimLens does not decide)', 'Two CT scans within 48 hours: pattern flagged for clinical review, no judgement on necessity', 'Discharge approval 3h 22m: breach logged; overstay cost sits with insurer'],
+      group: ['Room above cap flagged before surgery: member moved, dispute of about ₹46,000 avoided', 'Employee ID mismatch between e-card and HR: routed to HR'],
+      cancer: ['Modern-treatment limit tracked across cycles: ₹3,32,000 left', 'Renewal on 1 Feb 2027 during active treatment: lapse-risk reminder sent']
+    };
+    const cohort = { maternity: 'Expecting mother · retail', older: 'Senior (68) · son managing', group: 'Employee · group policy', cancer: 'Cancer · repeat day care' };
+    return `<div class="ins-wrap">
+      <div class="ins-head"><div><div class="xs muted">YOUR INSURER · CLAIMS OPERATIONS · DEMO DATA</div><h1>ClaimLens insurer console</h1></div><span class="chip c-info">Pilot view · 4 demo cases</span></div>
+      <div class="kpis">
+        <div class="kpi"><div class="k">Cashless decisions within 1 hour</div><div class="v">${ok1}/${all1.length}</div><div class="s muted">Industry: 86.9% (IRDAI data, Aug 2024 to May 2025)</div></div>
+        <div class="kpi"><div class="k">Discharge approvals within 3 hours</div><div class="v">${ok3}/${rows.length}</div><div class="s muted">Industry: 96.7%. Breach logged with timestamps</div></div>
+        <div class="kpi"><div class="k">Avoidable query triggers caught early</div><div class="v">${caught}</div><div class="s muted">Document issues fixed before the insurer asked</div></div>
+        <div class="kpi"><div class="k">Members who saw their likely payout before admission</div><div class="v">4/4</div><div class="s muted">Estimate vs final within ₹1,000 where the plan held</div></div>
+      </div>
+      <table class="cases"><thead><tr><th>Case</th><th>Cohort</th><th>Cashless decision</th><th>Discharge approval</th><th>Expected vs final payout</th><th>For review (not decisions)</th></tr></thead><tbody>
+      ${rows.map(x => `<tr><td><b>${esc(x.sc.user.full)}</b><div class="xs muted">${esc(x.sc.policy.number)}</div></td><td>${cohort[x.k]}</td>
+        <td>${x.t1.map(m => `${fmtM(m)} ${m <= 60 ? '✓' : '✗'}`).join('<br>')}</td>
+        <td>${x.t3 != null ? `${fmtM(x.t3)} ${x.t3 <= 180 ? '✓' : '<span class="chip c-low">✗ breach</span>'}` : '—'}</td>
+        <td>${INR(x.r.expected.payable)} / ${INR(x.r.final.payable)}</td>
+        <td class="small">${review[x.k].map(s => `• ${esc(s)}`).join('<br>')}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="ins-grid">
+        <div class="card"><h4>Pilot hypotheses (targets to test, not results)</h4>
+          <p class="small">• Repeat status calls per claim: <b>−30%</b> (members and HR self-serve status)</p>
+          <p class="small">• Claims with avoidable rejection or query reasons (documents, late notice): <b>−20%</b></p>
+          <p class="small">• Grievances and Ombudsman complaints per 10,000 claims: <b>−15%</b></p>
+          <p class="small">• Cashless decisions within 1 hour: <b>86.9% → 92%+</b> (complete documents first time)</p>
+          <p class="xs muted">Measured against a matched control group in a 90-day pilot on one product line.</p></div>
+        <div class="card"><h4>Compliance evidence</h4>
+          <p class="small">✓ Senior citizens' channel: 1 case routed; alert raised at the 3-hour mark</p>
+          <p class="small">✓ 1-hour and 3-hour clocks time-stamped for every cashless case</p>
+          <p class="small">✓ Every explanation cites a policy clause; rejection letters must quote terms too</p>
+          <p class="small">✓ Consent log (DPDP Act 2023): purpose, scope, withdrawal</p>
+          <p class="xs muted">ClaimLens never decides a claim. Claim decisions stay with the insurer.</p></div>
+      </div></div>`;
+  };
+
+  /* ---------- Presenter rail ---------- */
+  screens.rail = function () {
+    const n = CL.rail[S.step], sc = CL.sc();
+    return `<h3>Behind this screen · step ${S.step + 1} of 6</h3><h2>${esc(n.t)}</h2><ul>${n.b.map(b => `<li>${esc(b)}</li>`).join('')}</ul>
+      ${n.ai ? `<div class="box ai">🤖 ${esc(n.ai)}</div>` : ''}<div class="box guard">🛑 ${esc(n.g)}</div><div class="box value">📈 ${esc(n.v)}</div>
+      <div class="foot">Scenario: <b>${esc(CL.t(sc.label))}</b>. Switch scenarios at the top: same flow, different cover. Insurer view shows what the buyer sees.</div>`;
+  };
+
+  /* ---------- Read-aloud text ---------- */
+  screens.speech = function () {
+    const sc = CL.sc(), r = CL.res(), t = CL.t;
+    switch (S.step) {
+      case 0: return t(sc.intro);
+      case 1: return S.policyRead ? sc.terms.map(x => `${t(x.title)}: ${t(x.value)}.`).join(' ') : t(sc.policy.docs);
+      case 2: { const b = S.chatLog.filter(e => e.from === 'bot').pop(); return b ? t(b.m.text || b.m) : ''; }
+      case 3: return `${t(ui.estimate)} ${INR(r.est.total)}. ${t(ui.insurerPays)} ${INR(r.est.payable)}. ${t(ui.youPay)} ${INR(r.est.youPay)}. ` + sc.flags(r).slice(0, 2).map(f => t(f.text)).join(' ');
+      case 4: return `${t(sc.intimation.rule)} ${sc.docs.map(d => t(d.name)).join(', ')}.`;
+      case 5: { const ev = sc.timeline[S.tlIdx - 1]; return ev ? t(CL.val(ev.text, r)) : `${t(ui.caseOwner)}: ${sc.owner.name}.`; }
+    }
+    return '';
+  };
+})(window.CL);
+
+</script>
+<script>
+  try { CL.boot(); } catch (e) { window.__errors.push('boot: ' + e.message); document.getElementById('errs').textContent = window.__errors.join(' | '); }
+</script>
+</body>
+</html>
